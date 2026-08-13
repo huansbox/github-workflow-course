@@ -17,5 +17,5 @@
 
 ## 部署
 
-- private repo（GitHub Free）開不了 Pages；`deploy.yml` 是教材兼備用。轉 public 後：Settings → Pages → Source = GitHub Actions。
+- private repo（GitHub Free）開不了 Pages（2026-08-13 實測 API 422）；`deploy.yml` 是教材兼備用，目前為 disabled 狀態。轉 public 上線的三步指令見 README「使用方式」。
 - 回饋與後續開發以本 repo 的 GitHub issues 為 tracker。

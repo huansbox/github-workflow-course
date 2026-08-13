@@ -18,8 +18,14 @@
 
 零依賴純靜態網站，不需 build：
 
-- **本地**：直接用瀏覽器開 `index.html`（file:// 可用；測驗進度存瀏覽器 localStorage）。
-- **GitHub Pages**：`.github/workflows/deploy.yml` 已就緒，但 GitHub Free 方案的 private repo 無法啟用 Pages。repo 轉 public 或帳號升級後，Settings → Pages → Source 選 GitHub Actions 即可。
+- **本地（目前的使用方式）**：直接用瀏覽器開 `index.html`（file:// 可用；測驗進度存瀏覽器 localStorage）。
+- **GitHub Pages**：2026-08-13 實測確認 GitHub Free 方案的 private repo 無法啟用 Pages（API 回 422）。`deploy.yml` 已寫好但暫時 disable（避免每次 push 產生失敗通知）。想上線時三步：
+
+  ```bash
+  gh repo edit huansbox/github-workflow-course --visibility public --accept-visibility-change-consequences
+  gh api -X POST repos/huansbox/github-workflow-course/pages -f "build_type=workflow"
+  gh workflow enable deploy.yml -R huansbox/github-workflow-course && gh workflow run deploy.yml -R huansbox/github-workflow-course
+  ```
 
 ## 回饋
 
