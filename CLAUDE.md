@@ -17,5 +17,5 @@
 
 ## 部署
 
-- private repo（GitHub Free）開不了 Pages（2026-08-13 實測 API 422）；`deploy.yml` 是教材兼備用，目前為 disabled 狀態。轉 public 上線的三步指令見 README「使用方式」。
+- repo 已於 2026-08-13 轉 public 並啟用 Pages（https://huansbox.github.io/github-workflow-course/ ）；push main 即自動部署（`deploy.yml`，兼第 9 單元教材）。內容經隱私審查後決定公開；新增內容時維持同一標準（不寫入憑證、個資，個人 repo 名與工作流描述可接受）。
 - 回饋與後續開發以本 repo 的 GitHub issues 為 tracker。
