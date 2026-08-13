@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 rebase — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>第 2 章 · 單元 05</span></nav>
+</header>
+<main>
+<h1><code>rebase</code></h1>
+<p class="unit-tagline">把你的 commit 抱起來，放到另一個基底上重放一次。歷史因此變直，但 commit 也因此換了身分證。</p>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據</span>
+  <code>git rebase</code> 229 次 vs <code>git merge</code> 547 次——rebase 是你的低頻工具。
+  好消息：你的流程（squash 合併 PR）已經覆蓋了 interactive rebase 最大的用途（整理零碎 commit）。
+  所以這一課的重點放在兩個仍然值得會的場景：<strong>PR 前同步 main</strong>、<strong>force-with-lease 的安全網</strong>，
+  以及那條不可違反的金律。
+</section>
+
+<h2>這是什麼</h2>
+<p><code>git rebase main</code> 在做三件事：找出你 branch 上 main 沒有的 commit → 暫存起來 →
+把 branch 指到 main 最新端點，逐一重放。結果是線性歷史，代價是<strong>每個重放的 commit 都是新 hash</strong>
+（parent 變了，hash 必變）。</p>
+<pre><code>rebase 前：            rebase 後：
+      A---B  (feature)              A'--B'  (feature)
+     /                             /
+D---E---F  (main)         D---E---F  (main)</code></pre>
+<p>對比 merge：<code>git merge main</code>（在 feature 上）會產生一個合併 commit，歷史分叉但 commit 不變。
+兩者達成同一件事——讓 branch 拿到 main 的最新變更——差別只在歷史形狀與 hash 是否改寫。</p>
+
+<h2>何時用</h2>
+<ul>
+  <li><strong>PR 前同步 main</strong>：branch 開發到一半 main 前進了，rebase 讓你的 PR diff 乾淨地建立在最新 main 上，而不是混著一個「Merge branch 'main' into …」的合併 commit。</li>
+  <li><strong><code>git pull --rebase</code></strong>：同一條 branch 在兩台機器間輪流工作時（你的 mac/Windows 切換！），pull --rebase 把本地未推的 commit 重放到遠端最新之上，避免每次 pull 都長出無意義的合併 commit。可設 <code>git config pull.rebase true</code> 當預設。</li>
+  <li><strong>Interactive rebase（<code>git rebase -i</code>）</strong>：送審前整理 commit——squash（併入前一個）、fixup（併入且丟棄 message）、reword（改 message）、drop（刪除）、edit（停下來改內容）。若你的 repo 一律 squash 合併，這件事 GitHub 會在合併時幫你做，需求就小很多。<em>注意：Claude Code 環境不支援互動式指令，<code>rebase -i</code> 要自己在終端機開編輯器操作。</em></li>
+</ul>
+
+<h2>怎麼用</h2>
+<pre><code># 把 feature 重放到最新 main 上
+git switch feature
+git fetch origin
+git rebase origin/main        # 衝突時：解掉 → git add → git rebase --continue
+git rebase --abort            # 隨時放棄，回到 rebase 前
+
+# rebase 過的 branch 推回遠端（歷史已改寫，普通 push 會被拒）
+git push --force-with-lease   # 不要用 --force
+
+# 兩台機器同步同一條 branch
+git pull --rebase</code></pre>
+
+<h2>常見的坑</h2>
+<ul>
+  <li><strong>金律：別 rebase 別人已經拿到的 commit</strong>。rebase 改寫 hash——如果同事（或另一台機器、或一個開著的 PR 的審查者）手上有舊 hash，他們的歷史和你的從此對不上，修復既麻煩又容易出錯。自己一個人用的 branch 隨便 rebase；<strong>推出去且有人依賴之後就不要</strong>。</li>
+  <li><strong><code>--force</code> vs <code>--force-with-lease</code></strong>：force 無條件覆蓋遠端——如果另一台機器剛 push 了新 commit，force 會把它抹掉。force-with-lease 檢查「遠端還是我上次看到的樣子」才覆蓋，等於樂觀鎖。永遠用後者。</li>
+  <li><strong>rebase 中的衝突是逐 commit 解的</strong>：一次 rebase 十個 commit 可能解十次衝突（同一行還會重複遇到）。commit 越零碎、branch 越長壽，rebase 越痛——這又回到「工作切小」。</li>
+  <li><strong>以為 rebase 會弄丟東西</strong>：rebase 前的狀態一直都在 <code>git reflog</code> 裡（30 天起跳）。真的搞砸了：<code>git reset --hard ORIG_HEAD</code>（或 reflog 找到 rebase 前那筆）就回來了。</li>
+</ul>
+
+<section class="tip">
+  <span class="tip-title">💡 給你的優化建議</span>
+  你在 mac 與 Windows 間切換開發，同一條 branch 兩邊輪流推——這正是 <code>git config --global pull.rebase true</code>
+  的教科書適用情境：從此 <code>git pull</code> 不再產生「Merge branch …」雜訊 commit。
+  （只影響 pull 的行為，不會動到任何已推送的歷史，對你的 handoff 流程無副作用。）
+</section>
+
+<section class="takeaways">
+<h2>✅ Takeaways</h2>
+<ul>
+  <li>rebase = 換基底重放；歷史變線性，commit 全部換新 hash。</li>
+  <li>金律：commit 一旦被別人（或別台機器）拿到，就不要再 rebase 它。</li>
+  <li>改寫過的 branch 用 <code>--force-with-lease</code> 推，永遠不用 <code>--force</code>。</li>
+  <li>兩機輪替的 branch 用 <code>pull --rebase</code>，避免雜訊合併 commit。</li>
+  <li>搞砸了有 reflog / ORIG_HEAD 當後悔藥；rebase 不會真的弄丟 commit。</li>
+</ul>
+</section>
+
+<h2>測驗</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="04-merge-strategy.html">← 04 merge-strategy</a>
+  <a href="06-tag.html">06 tag →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "05-rebase",
+  "questions": [
+    {
+      "q": "為什麼 rebase 之後的 branch 沒辦法用普通 git push 推上遠端？",
+      "type": "single",
+      "options": [
+        {"t": "重放產生了新 hash，遠端的舊歷史和本地不是快轉關係，push 被拒", "correct": true, "why": "正解。push 預設只接受 fast-forward；歷史被改寫後兩邊分岔，必須 force 系列才能覆蓋。"},
+        {"t": "rebase 會鎖住 branch 24 小時", "correct": false, "why": "沒有這種機制。"},
+        {"t": "rebase 後必須先開 PR 才能 push", "correct": false, "why": "push 與 PR 無關。"},
+        {"t": "遠端偵測到歷史改寫，需要管理員解鎖", "correct": false, "why": "被拒是 Git 的快轉檢查，不是權限問題；force-with-lease 就能推。"}
+      ]
+    },
+    {
+      "q": "--force 與 --force-with-lease 的差別是什麼？",
+      "type": "single",
+      "options": [
+        {"t": "with-lease 只在「遠端仍是我上次看到的狀態」時才覆蓋，能避免抹掉別人剛推的 commit", "correct": true, "why": "正解。等於樂觀鎖：遠端有你不知道的新 commit 時 push 失敗，逼你先看一眼。"},
+        {"t": "with-lease 比較有禮貌，會先通知協作者", "correct": false, "why": "沒有通知機制，差別在覆蓋前的狀態檢查。"},
+        {"t": "with-lease 只能用在 main，force 只能用在工作 branch", "correct": false, "why": "兩者不限 branch；差別在檢查條件。"},
+        {"t": "功能相同，with-lease 是新版寫法", "correct": false, "why": "行為不同：force 無條件覆蓋，可能默默毀掉遠端新 commit。"}
+      ]
+    },
+    {
+      "q": "哪些情境違反了「rebase 金律」，不該做？",
+      "type": "multi",
+      "options": [
+        {"t": "rebase 一條有審查者正在 review 的 PR branch，然後 force push", "correct": true, "why": "正解（=違反）。審查者手上的 commit 全部換了 hash，留言錨點與已讀狀態報廢。"},
+        {"t": "rebase main 本身，把上週的歷史整理乾淨", "correct": true, "why": "正解（=違反）。main 是所有人的基底，改寫它等於讓每個 clone 的歷史全部分岔——最嚴重的違規。"},
+        {"t": "rebase 一條只有自己本機有、從未 push 的 branch", "correct": false, "why": "不違反。沒有任何人拿到這些 commit，隨便改寫。"},
+        {"t": "rebase 一條已 push 但確定只有自己一個人（一台機器）在用的工作 branch", "correct": false, "why": "不違反。「別人已拿到」才是判準；推過但無人依賴的 branch 可以改寫，用 force-with-lease 推回。"}
+      ]
+    },
+    {
+      "q": "你在 Windows 上 pull 自己的工作 branch，發現 mac 昨晚推了 2 個 commit，本地也有 1 個未推的 commit。用 pull --rebase 會發生什麼？",
+      "type": "single",
+      "options": [
+        {"t": "本地那個 commit 被重放到 mac 的 2 個 commit 之後，歷史保持一直線", "correct": true, "why": "正解。pull --rebase = fetch + 把本地未推 commit 重放到遠端最新之上，不產生合併 commit。"},
+        {"t": "產生一個合併 commit，把兩邊的歷史接起來", "correct": false, "why": "那是普通 pull（merge 模式）的行為，正是 --rebase 要避免的。"},
+        {"t": "本地 commit 被遠端覆蓋而消失", "correct": false, "why": "pull --rebase 不丟工作；衝突時會停下來要你解。"},
+        {"t": "被拒絕，必須先 push 本地 commit", "correct": false, "why": "順序相反：先整合遠端變更才推得上去。"}
+      ]
+    },
+    {
+      "q": "rebase 到一半發現衝突解錯了、越弄越亂。哪些做法能安全脫身？",
+      "type": "multi",
+      "options": [
+        {"t": "git rebase --abort，整條 branch 回到 rebase 開始前", "correct": true, "why": "正解。rebase 進行中隨時可以整個放棄，一切如初。"},
+        {"t": "rebase 已結束的話，用 git reflog 找到 rebase 前的位置 reset 回去", "correct": true, "why": "正解。改寫前的 commit 仍在 reflog 裡，reset --hard 到那筆即可還原。"},
+        {"t": "git reset --hard ORIG_HEAD（rebase 剛結束時）", "correct": true, "why": "正解。rebase 會把起點存進 ORIG_HEAD，是 reflog 的快捷方式。"},
+        {"t": "沒救了，只能刪掉 branch 重寫", "correct": false, "why": "rebase 幾乎永遠有後悔藥；reflog 保留被「改寫掉」的歷史至少 30 天。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

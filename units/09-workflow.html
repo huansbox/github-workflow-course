@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>09 workflow — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>第 3 章 · 單元 09</span></nav>
+</header>
+<main>
+<h1><code>workflow</code></h1>
+<p class="unit-tagline">GitHub Actions 的解剖課：一個 YAML 檔怎麼變成雲端幫你跑的機器人。</p>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據</span>
+  <code>gh workflow</code> 59 次、<code>actions/checkout</code> 15 次——這裡就是你統計上最大的空白。
+  但你其實已經有一個 Actions workflow 在身邊：repo-wiki skill 的 <code>publish-wiki.yml</code>。
+  這一課給你解剖工具，讓你能讀懂並改造任何 workflow——包括這個課程 repo 自己的 <code>deploy.yml</code>。
+</section>
+
+<h2>五個名詞，一張圖</h2>
+<pre><code>Event（事件：push、PR、排程……）
+  └─ 觸發 Workflow（.github/workflows/*.yml，一檔一個）
+       └─ 包含一或多個 Job（各自在一台全新的 Runner 虛擬機上跑，預設互相平行）
+            └─ 包含一串 Step（依序執行；shell 指令或現成的 Action）
+                 └─ Action（別人打包好的可重用步驟，uses: 引入）</code></pre>
+<ul>
+  <li><strong>Workflow</strong>：放在 repo 的 <code>.github/workflows/</code> 下的 YAML 檔。</li>
+  <li><strong>Runner</strong>：GitHub 提供的拋棄式虛擬機（<code>ubuntu-latest</code> 最常用）。每個 job 開機時是<strong>空的</strong>——連你的 repo 都沒有，所以幾乎每個 job 第一步都是 <code>actions/checkout</code>。</li>
+  <li><strong>Step 兩型</strong>：<code>run:</code> 跑 shell 指令；<code>uses:</code> 引入現成 Action（Marketplace 上數萬個）。</li>
+</ul>
+
+<h2>逐行讀一個真的 workflow</h2>
+<p>這是本課程 repo 自己的 <code>.github/workflows/deploy.yml</code>（把靜態網站部署到 GitHub Pages）：</p>
+<pre><code>name: Deploy to GitHub Pages     # 顯示在 Actions 頁籤的名字
+
+on:                              # ── 何時觸發（第 10 單元詳講）
+  push:
+    branches: [main]             # main 有 push 就跑
+  workflow_dispatch:             # 也允許手動按按鈕跑
+
+permissions:                     # ── 這個 workflow 的 token 權限（第 11 單元詳講）
+  contents: read                 # 只需要讀 repo
+  pages: write                   # 寫 Pages
+  id-token: write                # Pages 部署的身分驗證
+
+concurrency:                     # ── 同時只跑一個部署
+  group: pages
+  cancel-in-progress: false      # 進行中的不取消（取消部署會留下半套狀態）
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest       # 跑在哪種 runner
+    timeout-minutes: 10          # 保險絲：卡住不會吃光額度
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}   # 表達式語法：引用其他 step 的輸出
+    steps:
+      - uses: actions/checkout@v5            # 第一步幾乎永遠是拿到 repo
+      - uses: actions/configure-pages@v5     # 官方 Pages 設定 action
+      - uses: actions/upload-pages-artifact@v4
+        with:                                # with: 是傳給 action 的參數
+          path: .                            # 整個 repo 就是網站（零 build）
+      - id: deployment
+        uses: actions/deploy-pages@v4</code></pre>
+<p>讀懂這一個，你就讀得懂八成的 workflow：醫生的 CCChange deploy.yml 結構完全相同，
+只是中間多了 <code>pnpm install</code>、<code>pnpm build</code> 幾個 <code>run:</code> step。</p>
+
+<h2>幾個馬上會用到的細節</h2>
+<ul>
+  <li><strong>多 job 預設平行</strong>；要串行用 <code>needs:</code>（如 <code>deploy: needs: build</code>）。job 之間不共享檔案系統——傳檔案要用 artifact。</li>
+  <li><strong>Action 要釘版本</strong>：<code>@v5</code>（大版 tag，一般夠用）或 <code>@&lt;完整 SHA&gt;</code>（供應鏈最嚴格）。不寫版本或用 <code>@main</code> = 讓別人隨時改變你 CI 裡跑的程式碼。</li>
+  <li><strong>費用</strong>：public repo 的 Actions <strong>免費無上限</strong>；private repo Free 方案每月 2000 分鐘免費（Linux runner 計 1x）。你的 private repo 做輕量 CI 綽綽有餘。</li>
+  <li><strong><code>timeout-minutes</code> 是好習慣</strong>：預設 6 小時——一個卡死的 job 可以默默吃掉你半天的免費額度。</li>
+</ul>
+
+<h2>常見的坑</h2>
+<ul>
+  <li><strong>YAML 縮排</strong>：兩格縮排、冒號後要空格；<code>on:</code>、<code>jobs:</code> 層級錯一格就整檔失效。找不到 workflow 時先檢查縮排與檔案路徑（必須是 <code>.github/workflows/</code>，不是 <code>.github/workflow/</code>）。</li>
+  <li><strong>runner 是空機器</strong>：忘了 checkout，後面的步驟會在空目錄裡執行然後報 file not found——新手第一坑。</li>
+  <li><strong>某些觸發只認 default branch 上的 workflow 檔</strong>：<code>schedule</code>、<code>workflow_dispatch</code> 等要等 workflow 檔合進 main 才生效——在 branch 上開發新 workflow 時「怎麼按不了手動執行」多半是這個原因。</li>
+  <li><strong>把 workflow 當本機腳本除錯</strong>：每改一行 push 一次等雲端跑，迭代極慢。先把邏輯寫成本機可跑的 script（repo 裡的 <code>scripts/</code>），workflow 只負責「在對的時機呼叫它」——這也讓 script 可以被本機測試。</li>
+</ul>
+
+<section class="takeaways">
+<h2>✅ Takeaways</h2>
+<ul>
+  <li>層級：Event → Workflow → Job（平行、各自一台空 VM）→ Step（<code>run:</code> 或 <code>uses:</code>）。</li>
+  <li>幾乎每個 job 第一步是 <code>actions/checkout</code>——runner 開機時什麼都沒有。</li>
+  <li>Action 一律釘版本（<code>@v5</code> 起步）；<code>timeout-minutes</code> 一律設。</li>
+  <li>public repo Actions 免費；private repo Free 方案每月 2000 分鐘。</li>
+  <li>邏輯寫在可本機執行的 script，workflow 只做時機與膠水。</li>
+</ul>
+</section>
+
+<h2>測驗</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="08-auto-merge.html">← 08 auto-merge</a>
+  <a href="10-trigger.html">10 trigger →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "09-workflow",
+  "questions": [
+    {
+      "q": "為什麼幾乎每個 job 的第一個 step 都是 uses: actions/checkout？",
+      "type": "single",
+      "options": [
+        {"t": "runner 是全新的空虛擬機，不 checkout 的話連 repo 檔案都沒有", "correct": true, "why": "正解。每個 job 各自開一台乾淨 VM；repo 內容要自己抓下來。"},
+        {"t": "checkout 負責安裝 git 與基本工具", "correct": false, "why": "runner 映像檔本來就預裝了 git 等常用工具；checkout 抓的是你的 repo 內容。"},
+        {"t": "GitHub 規定第一步必須是 checkout", "correct": false, "why": "沒有此規定；不需要 repo 內容的 job（如純 API 呼叫）可以不 checkout。"},
+        {"t": "checkout 用來驗證使用者權限", "correct": false, "why": "權限由 GITHUB_TOKEN 與 permissions 控制，與 checkout 無關。"}
+      ]
+    },
+    {
+      "q": "一個 workflow 裡定義了 build 和 deploy 兩個 job，deploy 需要用到 build 產出的檔案。下列哪些是必要的安排？",
+      "type": "multi",
+      "options": [
+        {"t": "deploy 加上 needs: build，否則兩個 job 會平行執行", "correct": true, "why": "正解。job 預設平行；needs 建立依賴順序。"},
+        {"t": "build 的產出要以 artifact 上傳、deploy 再下載，因為兩個 job 不共享檔案系統", "correct": true, "why": "正解。各 job 是獨立 VM；artifact（upload/download-artifact 或 Pages 專用版本）是跨 job 傳檔的機制。"},
+        {"t": "只要寫在同一個 YAML 檔，deploy 自然能讀到 build 的檔案", "correct": false, "why": "同檔不同 job 仍是不同機器，檔案不會自己過去。"},
+        {"t": "把兩個 job 合併成一個 job 也是合法解，步驟依序跑、檔案自然共享", "correct": false, "why": "合併確實可行，但題目前提是「兩個 job」的架構；而且 Pages 部署這類要分離權限的場景，分 job 是刻意設計。此選項在本題架構下不是必要安排。"}
+      ]
+    },
+    {
+      "q": "uses: some-org/some-action@main 這種寫法的問題是什麼？",
+      "type": "single",
+      "options": [
+        {"t": "main 會移動：action 作者（或入侵者）之後推的任何程式碼，都會直接在你的 CI 裡執行", "correct": true, "why": "正解。CI 常持有 secrets 與寫入權限，引入會移動的程式碼是供應鏈風險；釘 @v5 或完整 SHA。"},
+        {"t": "語法錯誤，@ 後面只能接版本號", "correct": false, "why": "語法合法（可接 branch/tag/SHA），問題在風險不在語法。"},
+        {"t": "會讓 workflow 跑得比較慢", "correct": false, "why": "速度沒有實質差異。"},
+        {"t": "沒有問題，官方推薦用 @main 保持最新", "correct": false, "why": "官方建議相反：釘 tag 或 SHA。"}
+      ]
+    },
+    {
+      "q": "你在工作 branch 上新增了一個帶 workflow_dispatch 的 workflow 檔，push 之後到 Actions 頁面卻找不到手動執行的按鈕。最可能的原因是？",
+      "type": "single",
+      "options": [
+        {"t": "workflow_dispatch 要等 workflow 檔進入 default branch 才會出現在介面上", "correct": true, "why": "正解。schedule 與 workflow_dispatch 這類觸發都以 default branch 上的檔案為準——先合併，再手動跑（可選擇跑其他 branch 的版本）。"},
+        {"t": "手動觸發是付費功能", "correct": false, "why": "workflow_dispatch 是免費功能。"},
+        {"t": "必須先成功跑過一次才會出現按鈕", "correct": false, "why": "沒有此限制；關鍵在檔案是否在 default branch。"},
+        {"t": "YAML 一定寫錯了", "correct": false, "why": "有可能，但題目情境（branch 上新增）最典型的原因是 default branch 規則。"}
+      ]
+    },
+    {
+      "q": "關於 Actions 的費用與資源，哪些正確？",
+      "type": "multi",
+      "options": [
+        {"t": "public repo 的 Actions 用量免費", "correct": true, "why": "正解。這也是很多開源專案 CI 全開的原因。"},
+        {"t": "private repo 在 Free 方案有每月免費分鐘數（2000 分鐘）", "correct": true, "why": "正解。輕量 CI（lint、test、部署）通常用不完。"},
+        {"t": "不設 timeout-minutes 時，一個卡死的 job 可以跑滿 6 小時預設上限", "correct": true, "why": "正解。private repo 上這會白白吃掉免費額度——每個 job 都該設保險絲。"},
+        {"t": "Actions 分鐘數是以 workflow 檔的數量計費", "correct": false, "why": "計的是 runner 實際執行時間，跟檔案數無關。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

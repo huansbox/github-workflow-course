@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><span>GitHub Workflow 課程</span><span>為 huansbox 客製 · v1</span></nav>
+</header>
+<main>
+<h1>GitHub Workflow 課程</h1>
+<p class="unit-tagline">一個單元一個單字。每單元：概念 → 何時用 → 怎麼用 → 坑 → Takeaways → 測驗（80% 通過）。</p>
+
+<div class="progress-summary" id="progress-summary"></div>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據（2026-08 統計自歷史 Claude Code session 記錄的詞頻）</span>
+  <p style="margin:.3rem 0 .6rem">你的日常火力集中在 commit / push / branch / PR / issue——GitHub Flow 的骨架你天天在走。
+  但尺規的另一端幾乎空白：<code>gh workflow</code> 59 次、<code>gh release</code> 11 次、<code>git tag</code> 10 次、<code>workflow_dispatch</code> 3 次。
+  這門課的第 2、3 章就是針對這段空白設計的。</p>
+  <div class="freq">
+    <div class="freq-row"><code>git commit</code><div class="freq-bar" style="width:100%"></div><span class="n">7068</span></div>
+    <div class="freq-row"><code>git push</code><div class="freq-bar" style="width:59%"></div><span class="n">4199</span></div>
+    <div class="freq-row"><code>git branch</code><div class="freq-bar" style="width:34%"></div><span class="n">2388</span></div>
+    <div class="freq-row"><code>pull request</code><div class="freq-bar" style="width:33%"></div><span class="n">2329</span></div>
+    <div class="freq-row"><code>gh issue</code><div class="freq-bar" style="width:17%"></div><span class="n">1211</span></div>
+    <div class="freq-row"><code>git worktree</code><div class="freq-bar" style="width:12%"></div><span class="n">879</span></div>
+    <div class="freq-row"><code>git merge</code><div class="freq-bar" style="width:7.7%"></div><span class="n">547</span></div>
+    <div class="freq-row"><code>git rebase</code><div class="freq-bar" style="width:3.2%"></div><span class="n">229</span></div>
+    <div class="freq-row"><code>gh run</code><div class="freq-bar" style="width:2.2%"></div><span class="n">154</span></div>
+    <div class="freq-row"><code>gh workflow</code><div class="freq-bar" style="width:0.8%"></div><span class="n">59</span></div>
+    <div class="freq-row"><code>gh release</code><div class="freq-bar" style="width:0.16%"></div><span class="n">11</span></div>
+    <div class="freq-row"><code>git tag</code><div class="freq-bar" style="width:0.14%"></div><span class="n">10</span></div>
+    <div class="freq-row"><code>workflow_dispatch</code><div class="freq-bar" style="width:0.04%"></div><span class="n">3</span></div>
+  </div>
+</section>
+
+<section class="tip">
+  <span class="tip-title">💡 這門課的藍本</span>
+  <p style="margin:.2rem 0">靈感來自一位擅用 GitHub workflow 的腫瘤科醫師（htlin222）的心法：
+  「Issue 就是待辦事項，完成就是 PR，Merge 會觸發自動化的就用 CI/CD，定期任務用排程。」
+  課程中的真實案例（auto-merge 防護、cron 自動出刊、自動 release）都取自他的公開 repo，並對照你自己的
+  handoff / grill-me / to-issues 工作流給出落地建議。</p>
+</section>
+
+<section class="chapter">
+  <h2>第 1 章 · GitHub Flow：把你已會的串成一套心法</h2>
+  <ol class="unit-list">
+    <li data-unit="01-github-flow"><a href="units/01-github-flow.html"><span class="unit-num">01</span><span class="unit-word">github-flow</span><span class="unit-desc">一條 main、短命 branch、merge 即自動化的完整循環</span></a></li>
+    <li data-unit="02-issue"><a href="units/02-issue.html"><span class="unit-num">02</span><span class="unit-word">issue</span><span class="unit-desc">Issue 當待辦與計畫審核點：task list、label、template、closing keywords</span></a></li>
+    <li data-unit="03-pull-request"><a href="units/03-pull-request.html"><span class="unit-num">03</span><span class="unit-word">pull-request</span><span class="unit-desc">Draft PR、review、把截圖與驗證放進 PR——讓 PR 成為審核介面</span></a></li>
+    <li data-unit="04-merge-strategy"><a href="units/04-merge-strategy.html"><span class="unit-num">04</span><span class="unit-word">merge-strategy</span><span class="unit-desc">merge / squash / rebase 三種合併的取捨，與刪 branch 的坑</span></a></li>
+  </ol>
+</section>
+
+<section class="chapter">
+  <h2>第 2 章 · 低頻但高價值：依你的統計補課</h2>
+  <ol class="unit-list">
+    <li data-unit="05-rebase"><a href="units/05-rebase.html"><span class="unit-num">05</span><span class="unit-word">rebase</span><span class="unit-desc">重放 commit、interactive rebase、force-with-lease 與共享 branch 金律</span></a></li>
+    <li data-unit="06-tag"><a href="units/06-tag.html"><span class="unit-num">06</span><span class="unit-word">tag</span><span class="unit-desc">annotated vs lightweight、語意化版本、tag 不會自己被 push</span></a></li>
+    <li data-unit="07-release"><a href="units/07-release.html"><span class="unit-num">07</span><span class="unit-word">release</span><span class="unit-desc">gh release 與自動 changelog——醫生的「自動上版 Beta」</span></a></li>
+    <li data-unit="08-auto-merge"><a href="units/08-auto-merge.html"><span class="unit-num">08</span><span class="unit-word">auto-merge</span><span class="unit-desc">checks 綠了自動合併：--auto、branch protection、無人值守的防護清單</span></a></li>
+  </ol>
+</section>
+
+<section class="chapter">
+  <h2>第 3 章 · GitHub Actions：你的最大缺口</h2>
+  <ol class="unit-list">
+    <li data-unit="09-workflow"><a href="units/09-workflow.html"><span class="unit-num">09</span><span class="unit-word">workflow</span><span class="unit-desc">Actions 解剖：workflow / job / step / runner / action，逐行讀懂 YAML</span></a></li>
+    <li data-unit="10-trigger"><a href="units/10-trigger.html"><span class="unit-num">10</span><span class="unit-word">trigger</span><span class="unit-desc">on: push / schedule / workflow_dispatch / workflow_run 與觸發抑制的坑</span></a></li>
+    <li data-unit="11-permissions-secrets"><a href="units/11-permissions-secrets.html"><span class="unit-num">11</span><span class="unit-word">permissions-secrets</span><span class="unit-desc">GITHUB_TOKEN、最小權限、secrets 與 fork PR 的攻擊面</span></a></li>
+    <li data-unit="12-ci-cd"><a href="units/12-ci-cd.html"><span class="unit-num">12</span><span class="unit-word">ci-cd</span><span class="unit-desc">串起全流程：CI 檢查 → auto-merge → 部署 → release，加上除錯指令</span></a></li>
+  </ol>
+</section>
+
+<section>
+  <h2>怎麼使用這門課</h2>
+  <ul>
+    <li>順序讀最順（後面單元會引用前面的概念），但每單元自成一體，跳讀也行。</li>
+    <li>測驗題刻意出得刁：考「何時用」「怎麼用」「會踩什麼坑」，不是名詞背誦。答錯就讀每個選項的解析。</li>
+    <li>讀完有回饋（太簡單、想加單元、有錯誤）→ 在這個 repo 開 issue。這本身就是第 2 單元的實踐。</li>
+  </ul>
+</section>
+</main>
+<script src="assets/site.js"></script>
+</body>
+</html>

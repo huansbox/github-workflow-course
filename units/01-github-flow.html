@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 github-flow — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>第 1 章 · 單元 01</span></nav>
+</header>
+<main>
+<h1><code>github-flow</code></h1>
+<p class="unit-tagline">一條永遠可部署的 main、短命的工作 branch、PR 合併、merge 觸發自動化——四句話就是整套心法。</p>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據</span>
+  你每天在走這個循環的前半段：commit（7068）、push（4199）、branch（2388）、PR（2329）都是高頻詞。
+  你的 <code>handoff-end</code> skill 甚至把「確認 branch 已合併 → 刪 branch」寫成了標準程序。
+  缺的是循環的最後一步：<strong>merge 之後自動發生的事</strong>——那是第 3 章的主題。
+</section>
+
+<h2>這是什麼</h2>
+<p>GitHub Flow 是 GitHub 官方推的最簡分支模型，整個循環只有六步：</p>
+<pre><code>Issue（要做什麼）
+  → git switch -c 工作branch（從 main 切出）
+  → commit + push（小步前進）
+  → Pull Request（提出合併，掛審核）
+  → Merge（進 main，刪 branch）
+  → 自動化（CI/CD 部署、changelog、通知……）</code></pre>
+<p>核心約定只有一條：<strong>main 上的每個 commit 都必須是可部署的狀態</strong>。
+所有還不能部署的半成品都活在 branch 上；branch 的壽命以「一個 PR」為單位，合併即死。</p>
+<p>對照另一個常聽到的 Git Flow（有 <code>develop</code>、<code>release</code>、<code>hotfix</code> 等長期分支）：
+Git Flow 是為「一次發一個版、多版本並行維護」的軟體設計的（例如桌面軟體 v2.3 與 v3.0 同時要修 bug）。
+持續部署的網站、單人專案用它只會多出一堆要同步的分支。醫生那句「小至收發 Line 大到醫院系統全部一貫」，
+用的正是 GitHub Flow 而不是 Git Flow——因為他的東西 merge 完就直接上線。</p>
+
+<h2>何時用</h2>
+<ul>
+  <li><strong>用 GitHub Flow</strong>：持續部署的服務、個人專案、需要留審核紀錄的工作——也就是你幾乎所有的 repo。</li>
+  <li><strong>不必開 branch</strong>：你的版控規範已經寫了——「可在目前 session 完整交付、不需 issue 或獨立 review 的低風險修改，可在 main 完成」。這與 GitHub Flow 不衝突：main 可部署的前提下，小改直接上是務實的化簡。</li>
+  <li><strong>該開 branch 的訊號</strong>：做不完要跨 session、需要 review、或改壞會影響已上線的東西。你的 handoff-end 第一條規則就是這個判斷。</li>
+</ul>
+
+<h2>怎麼用</h2>
+<pre><code># 從 issue 出發（醫生：「Issue 就是待辦事項」）
+gh issue view 12
+
+# 切出工作 branch（命名帶 issue 編號，之後好追）
+git switch -c 12-fix-login
+
+# 小步 commit、push 上去
+git push -u origin 12-fix-login
+
+# 開 PR，描述裡寫 Closes #12（合併時自動關 issue）
+gh pr create --fill --body "Closes #12"
+
+# 審核通過後合併＋刪 branch
+gh pr merge --squash --delete-branch</code></pre>
+
+<h2>常見的坑</h2>
+<ul>
+  <li><strong>長壽 branch</strong>：branch 活越久，和 main 的距離越遠，合併衝突越痛。解法不是「更會解衝突」，而是把工作切小、快合快刪。你的 to-issues skill 把工作切成「thin, independently verifiable slices」就是在源頭防這個坑。</li>
+  <li><strong>main 上留著壞掉的 commit</strong>：一旦允許「main 暫時是壞的」，整套自動化（merge 即部署）就不能信任。CI 檢查（第 12 單元）就是用機器守住這條線。</li>
+  <li><strong>把 branch 當長期儲存</strong>：合併後不刪 branch，列表會長滿殭屍。branch 只是 PR 的載體，歷史都在 main 和 PR 紀錄裡。</li>
+  <li><strong>循環走半套</strong>：有 branch 有 PR，但 merge 後的部署、changelog 還是手動——這是你目前的狀態。自動化補上之前，PR 只是「比較安全的手動流程」；補上之後才是完整的 GitHub Flow。</li>
+</ul>
+
+<section class="takeaways">
+<h2>✅ Takeaways</h2>
+<ul>
+  <li>GitHub Flow = main 永遠可部署 + 短命 branch + PR 合併 + merge 觸發自動化。</li>
+  <li>Git Flow 是多版本並行的模型；持續部署與單人專案用 GitHub Flow 就夠。</li>
+  <li>branch 壽命以一個 PR 為單位，合併即刪。</li>
+  <li>低風險小改直接進 main 不算犯規，前提是 main 保持可部署。</li>
+  <li>你已會前半套；這門課的重點是補「merge 之後自動發生的事」。</li>
+</ul>
+</section>
+
+<h2>測驗</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="../index.html">← 目錄</a>
+  <a href="02-issue.html">02 issue →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "01-github-flow",
+  "questions": [
+    {
+      "q": "GitHub Flow 的核心約定是哪一條？",
+      "type": "single",
+      "options": [
+        {"t": "main 上的每個 commit 都必須可部署", "correct": true, "why": "正解。這條約定成立，「merge 即部署」的自動化才能信任 main。"},
+        {"t": "所有 commit 都必須先經過 code review", "correct": false, "why": "review 是常見配套，但不是核心約定；單人專案低風險小改直接進 main 也符合 GitHub Flow。"},
+        {"t": "必須維護 develop 與 release 兩條長期分支", "correct": false, "why": "這是 Git Flow 的做法，GitHub Flow 刻意去掉了長期分支。"},
+        {"t": "每個 branch 都要對應一個 milestone", "correct": false, "why": "milestone 是專案管理工具，與分支模型無關。"}
+      ]
+    },
+    {
+      "q": "你接了一個要跨好幾個 session 的重構，另外還要順手修一個 README 錯字。依照 GitHub Flow 與你自己的版控規範，怎麼安排最合理？",
+      "type": "single",
+      "options": [
+        {"t": "重構開工作 branch 走 PR；README 錯字直接在 main 修", "correct": true, "why": "正解。跨 session、需 review 的工作開 branch；低風險小改直接進 main 是務實化簡，兩者都不破壞 main 可部署。"},
+        {"t": "兩者都開 branch，因為 GitHub Flow 禁止直接 commit main", "correct": false, "why": "GitHub Flow 的約定是 main 可部署，不是禁止直接 commit；錯字修正也開 PR 是儀式而非防護。"},
+        {"t": "兩者都直接在 main 做，反正最後都會合回來", "correct": false, "why": "跨 session 的重構中途必然有不可部署的狀態，放 main 上就破壞了核心約定。"},
+        {"t": "重構和錯字放同一個 branch 一起送 PR", "correct": false, "why": "混入無關變更讓 review 失焦，也違反「以可獨立理解與還原的邏輯變更為單位」。"}
+      ]
+    },
+    {
+      "q": "哪些情況是「該用 Git Flow 而不是 GitHub Flow」的正當理由？",
+      "type": "multi",
+      "options": [
+        {"t": "產品要同時維護 v2.x 和 v3.x 兩個發行版", "correct": true, "why": "正解。多版本並行維護正是 Git Flow 長期分支存在的理由。"},
+        {"t": "發版有固定週期且要在 release branch 上做穩定化測試", "correct": true, "why": "正解。需要「凍結一版慢慢修」的流程時，release branch 有實際作用。"},
+        {"t": "團隊人多，怕大家直接動 main", "correct": false, "why": "人多用 GitHub Flow + branch protection 就能守住 main，不需要整套 Git Flow。"},
+        {"t": "專案很重要，流程越複雜越安全", "correct": false, "why": "複雜度不等於安全；用不到的分支只會增加同步成本和出錯面。"}
+      ]
+    },
+    {
+      "q": "PR 合併後，工作 branch 應該怎麼處理？",
+      "type": "single",
+      "options": [
+        {"t": "刪掉，本地與遠端都刪", "correct": true, "why": "正解。branch 只是 PR 的載體，工作已在 main、討論已在 PR 紀錄，留著只會養殭屍。你的 handoff-end 也把這寫成標準步驟。"},
+        {"t": "保留當備份，以防 main 之後壞掉", "correct": false, "why": "main 的歷史本身就是備份（git revert / reset 都能救），舊 branch 不提供額外保障。"},
+        {"t": "繼續在上面做下一個任務", "correct": false, "why": "下一個任務應從最新的 main 重新切 branch，否則會把舊 branch 養成長壽 branch。"},
+        {"t": "改名留作紀錄", "correct": false, "why": "紀錄在 PR 和 main 的歷史裡，改名 branch 沒有意義。"}
+      ]
+    },
+    {
+      "q": "醫生的心法「Issue 就是待辦事項，完成就是 PR，Merge 會觸發自動化」對應到 GitHub Flow，下列敘述哪些正確？",
+      "type": "multi",
+      "options": [
+        {"t": "Issue 扮演「要做什麼」的單一事實來源，branch 和 PR 都掛回它", "correct": true, "why": "正解。issue 編號進 branch 名、PR 描述寫 Closes #N，整條線可以追溯。"},
+        {"t": "「完成就是 PR」意味著工作的驗收介面是 PR diff 與其附帶的驗證，不是口頭回報", "correct": true, "why": "正解。醫生審 Claude 的產出就是在 PR 上看 diff、看截圖——PR 是審核介面。"},
+        {"t": "merge 觸發的自動化（部署、changelog）是 GitHub Flow 循環的一部分，不是額外裝飾", "correct": true, "why": "正解。少了這段，PR 流程只是比較安全的手動作業；補上才形成完整閉環。"},
+        {"t": "這套心法只適用於程式碼，文件類 repo 用不上", "correct": false, "why": "醫生「小至收發 Line 大到醫院系統」都用同一套；內容、設定、文件都能走 issue → PR → 自動化。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

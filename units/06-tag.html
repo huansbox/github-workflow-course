@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 tag — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>第 2 章 · 單元 06</span></nav>
+</header>
+<main>
+<h1><code>tag</code></h1>
+<p class="unit-tagline">給某個 commit 一個永遠不動的名字。branch 會前進，tag 釘在原地——這正是「版本」需要的性質。</p>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據</span>
+  <code>git tag</code> 在你的紀錄只出現 10 次——幾乎沒用過。這很合理：你的專案多是「持續演進、隨時最新」的型態，
+  沒有發版需求就沒有 tag 需求。但下一單元的 Release（醫生的「自動上版」）整個建立在 tag 之上，
+  而且 tag 有一個違反直覺的行為（不會跟著 push 走）值得先知道。
+</section>
+
+<h2>這是什麼</h2>
+<p>tag 是指向單一 commit 的固定指標。與 branch 的差別一句話：<strong>branch 是會移動的書籤，tag 是釘死的圖釘</strong>。
+commit 之後 branch 自動前進，tag 永遠停在原地。</p>
+<p>兩種 tag：</p>
+<table>
+  <tr><th></th><th>Lightweight</th><th>Annotated</th></tr>
+  <tr><td>建立</td><td><code>git tag v1.0.0</code></td><td><code>git tag -a v1.0.0 -m "訊息"</code></td></tr>
+  <tr><td>本體</td><td>只是一個指標</td><td>完整物件：作者、日期、訊息、可簽章</td></tr>
+  <tr><td>用途</td><td>私人暫時標記</td><td><strong>發版一律用這個</strong>——「誰在何時發了這版」是 metadata 不是猜測</td></tr>
+</table>
+
+<h2>語意化版本（SemVer）</h2>
+<p>tag 名慣例用 <code>v主.次.修</code>（如 <code>v2.1.3</code>）：</p>
+<ul>
+  <li><strong>MAJOR</strong>：不相容的改動（使用者要改東西才能升級）。</li>
+  <li><strong>MINOR</strong>：新增功能，向下相容。</li>
+  <li><strong>PATCH</strong>：修 bug，向下相容。</li>
+  <li>預發行版接後綴：<code>v2.0.0-beta.1</code>——醫生的「自動上版 (Beta)」就是這類 prerelease 版號。</li>
+</ul>
+<p>單人專案不必教條化——SemVer 的真正價值是<strong>對使用者的溝通契約</strong>。沒有外部使用者的工具，
+用 <code>v1</code>、<code>v2</code> 或日期版號（<code>v2026.08.13</code>）都行，重點是一致。</p>
+
+<h2>怎麼用</h2>
+<pre><code># 建立 annotated tag（打在目前 HEAD）
+git tag -a v1.0.0 -m "第一個公開版"
+
+# 補打在歷史 commit 上
+git tag -a v0.9.0 -m "..." abc1234
+
+# 查看
+git tag                  # 列出全部
+git show v1.0.0          # tag 詳情＋指向的 commit
+
+# 推上遠端 —— tag 不會隨 git push 自動上傳！
+git push origin v1.0.0   # 推單一 tag（推薦）
+git push --tags          # 推全部 tag（小心把實驗性 tag 也推上去）
+
+# 刪除
+git tag -d v1.0.0                  # 本地
+git push origin --delete v1.0.0    # 遠端
+
+# 回到某版的狀態看看
+git switch --detach v1.0.0</code></pre>
+
+<h2>常見的坑</h2>
+<ul>
+  <li><strong><code>git push</code> 不會推 tag</strong>：這是最常見的意外。本地打了 tag、push、然後遠端什麼都沒有——tag 要顯式推（<code>git push origin v1.0.0</code>）。反過來 <code>git fetch</code> 預設會抓 tag，所以「拿得到別人的、自己的上不去」這種不對稱很困惑人。</li>
+  <li><strong>移動已發布的 tag 是反模式</strong>：tag 的價值就是不動。發現 v1.0.0 打錯 commit，正確做法是發 v1.0.1，不是刪掉重打——別人可能已經拿著舊 v1.0.0 在跑了（Git 也不會自動更新別人已抓到的 tag）。</li>
+  <li><strong>checkout tag 進入 detached HEAD</strong>：在上面 commit 的話，那些 commit 不屬於任何 branch，switch 走就「消失」（reflog 找得回）。要基於舊版開發：<code>git switch -c hotfix-1.0 v1.0.0</code>。</li>
+  <li><strong>發版用 lightweight tag</strong>：少了日期、作者、訊息，日後考古只能對著一個裸指標猜。發版一律 <code>-a</code>。</li>
+</ul>
+
+<section class="tip">
+  <span class="tip-title">💡 何時值得開始打 tag</span>
+  你目前「repo 即最新版」的模式下，兩個訊號出現時 tag 開始有價值：
+  ① 有東西<strong>依賴你的特定版本</strong>（例如 my-run 的某版被排程任務用著，你想繼續開發又不想弄壞它）；
+  ② 你想要「回到上次好的狀態」有個人類可讀的名字，而不是翻 commit hash。
+  第 7 單元會看到：打 tag 這個動作本身可以觸發自動化（on: push: tags）。
+</section>
+
+<section class="takeaways">
+<h2>✅ Takeaways</h2>
+<ul>
+  <li>branch 會動、tag 不動；「版本」需要的正是不動。</li>
+  <li>發版用 annotated tag（<code>-a -m</code>），metadata 齊全。</li>
+  <li><code>git push</code> 不帶 tag——要 <code>git push origin v1.0.0</code> 顯式推。</li>
+  <li>打錯版就發新版號，永遠不要移動已發布的 tag。</li>
+  <li>SemVer 是對使用者的溝通契約：MAJOR 破壞相容、MINOR 加功能、PATCH 修 bug。</li>
+</ul>
+</section>
+
+<h2>測驗</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="05-rebase.html">← 05 rebase</a>
+  <a href="07-release.html">07 release →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "06-tag",
+  "questions": [
+    {
+      "q": "你在本地打了 v1.2.0 然後 git push，到 GitHub 上卻找不到這個 tag。為什麼？",
+      "type": "single",
+      "options": [
+        {"t": "git push 預設不上傳 tag，要 git push origin v1.2.0 顯式推", "correct": true, "why": "正解。tag 的上傳永遠是顯式的——這是 tag 最常見的意外。"},
+        {"t": "tag 要等 24 小時才會同步", "correct": false, "why": "沒有延遲機制，是根本沒推上去。"},
+        {"t": "只有 annotated tag 能推上遠端", "correct": false, "why": "兩種 tag 都推得上去，但都要顯式推。"},
+        {"t": "tag 必須先在 GitHub 網頁上建立", "correct": false, "why": "本地建立再推是完全標準的流程。"}
+      ]
+    },
+    {
+      "q": "發布正式版本時該用哪種 tag、為什麼？",
+      "type": "single",
+      "options": [
+        {"t": "annotated（-a -m）：帶作者、日期、訊息，發版紀錄有據可查", "correct": true, "why": "正解。「誰在何時、為什麼發了這版」應該是資料，不是考古題。"},
+        {"t": "lightweight：比較輕量，效能好", "correct": false, "why": "效能差異可忽略；lightweight 適合私人暫時標記，不適合發版。"},
+        {"t": "兩種都行，功能完全相同", "correct": false, "why": "lightweight 沒有 metadata，也不能簽章。"},
+        {"t": "用 branch 代替 tag 標版本就好", "correct": false, "why": "branch 會前進——commit 一多，「v1.0 branch」就不再指著 v1.0 了。"}
+      ]
+    },
+    {
+      "q": "v1.0.0 發出去之後發現打在錯的 commit 上。正確的處理是？",
+      "type": "single",
+      "options": [
+        {"t": "保留 v1.0.0，在正確的 commit 上發 v1.0.1", "correct": true, "why": "正解。已發布的 tag 是別人可能已依賴的定點；而且 Git 不會自動更新別人已抓走的 tag，移動它只會製造兩個世界。"},
+        {"t": "刪掉 v1.0.0 重打在正確的 commit 上", "correct": false, "why": "已抓到舊 tag 的人不會自動更新，從此你和他們的 v1.0.0 指著不同 commit。"},
+        {"t": "git tag -f v1.0.0 正確commit 然後 push --force", "correct": false, "why": "同上——強制移動已發布的 tag 是反模式，只是動作更粗暴。"},
+        {"t": "發個公告請大家重新 clone", "correct": false, "why": "把自己的錯誤變成所有人的工作；發新版號一行解決。"}
+      ]
+    },
+    {
+      "q": "依照 SemVer，下列版本號變化哪些是正確的？",
+      "type": "multi",
+      "options": [
+        {"t": "修了一個 bug、行為契約不變：v1.4.2 → v1.4.3", "correct": true, "why": "正解。PATCH +1。"},
+        {"t": "新增一個指令列參數、舊用法全部照舊：v1.4.3 → v1.5.0", "correct": true, "why": "正解。向下相容的新功能是 MINOR +1，PATCH 歸零。"},
+        {"t": "改掉設定檔格式、舊設定檔需要手動轉換：v1.5.0 → v2.0.0", "correct": true, "why": "正解。使用者必須動手才能升級=不相容=MAJOR +1。"},
+        {"t": "重構內部程式碼、外部行為完全不變：v1.5.0 → v2.0.0", "correct": false, "why": "外部契約沒變就不是 MAJOR；純內部重構通常隨下次 PATCH/MINOR 一起出，不單獨跳大版。"}
+      ]
+    },
+    {
+      "q": "git switch --detach v1.0.0 之後直接 commit 了兩筆修正，接著 switch main。那兩筆 commit 的處境是？",
+      "type": "single",
+      "options": [
+        {"t": "不屬於任何 branch，離開後看似消失，但 reflog 還找得回來", "correct": true, "why": "正解。detached HEAD 上的 commit 沒有 branch 指著；正確做法是先 git switch -c hotfix v1.0.0 再開工。"},
+        {"t": "自動併入 main", "correct": false, "why": "Git 不會自動合併任何東西。"},
+        {"t": "自動建立一條新 branch 收容它們", "correct": false, "why": "不會自動建立；switch 時 Git 只會警告你正在離開未被引用的 commit。"},
+        {"t": "永久遺失，無法復原", "correct": false, "why": "reflog 保留引用紀錄（預設至少 30 天），找到 hash 就能建 branch 救回。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10 trigger — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>第 3 章 · 單元 10</span></nav>
+</header>
+<main>
+<h1><code>trigger</code></h1>
+<p class="unit-tagline">workflow 的 <code>on:</code> 區塊決定它何時醒來。選對事件，自動化才會在對的時機做對的事——以及，不會無限迴圈。</p>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據</span>
+  <code>workflow_dispatch</code> 在你的紀錄只出現 3 次。醫生的 repo 裡它幾乎無所不在——
+  不是因為他愛手動，而是每個自動 workflow 都留一個手動後門，出事時能重跑。
+  這一課還會解開他 auto-merge 註解裡那個關鍵謎題：<strong>為什麼自動合併之後，部署要用 dispatch 顯式接力</strong>。
+</section>
+
+<h2>常用觸發事件</h2>
+<table>
+  <tr><th>事件</th><th>何時醒來</th><th>典型用途</th></tr>
+  <tr><td><code>push</code></td><td>commit 進到指定 branch</td><td>部署、發布——「merge 觸發自動化」的主力</td></tr>
+  <tr><td><code>pull_request</code></td><td>PR 開啟/更新時</td><td>CI 檢查（lint、test）——把關卡掛在合併之前</td></tr>
+  <tr><td><code>schedule</code></td><td>cron 表達式的時刻</td><td>每日出刊、定期同步、健檢——醫生的「定期任務」</td></tr>
+  <tr><td><code>workflow_dispatch</code></td><td>人（或 API）按下執行</td><td>手動後門、參數化任務</td></tr>
+  <tr><td><code>workflow_run</code></td><td>另一個 workflow 跑完時</td><td>接力：CI 完成 → auto-merge</td></tr>
+  <tr><td><code>issues</code> / <code>issue_comment</code></td><td>issue 開啟/貼 label/留言時</td><td>label 驅動自動化——醫生的 issue-to-card</td></tr>
+  <tr><td><code>release</code></td><td>release 發布時</td><td>發版後的產物建置、通知</td></tr>
+</table>
+
+<h2>過濾器：branches 與 paths</h2>
+<pre><code>on:
+  push:
+    branches: [main]          # 只有 main 的 push
+    paths:                    # 且改到這些檔案才觸發
+      - "src/**"
+      - "!docs/**"            # 排除
+  schedule:
+    - cron: "30 22 * * *"     # UTC 22:30 = 台北 06:30
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "要重建的項目（空=全部）"
+        required: false</code></pre>
+<p>對應指令：<code>gh workflow run deploy.yml -f target=abc</code>、<code>gh run list --workflow=deploy.yml</code>。</p>
+
+<h2>三個必知的行為</h2>
+<ul>
+  <li><strong>cron 是 UTC</strong>：台北時間 (UTC+8) 要自己換算——想要早上 6:30 跑，寫 <code>30 22 * * *</code>。且 schedule 不保證準點，尖峰時段可能延遲數分鐘到數十分鐘；分鐘級精確的任務不要指望它。</li>
+  <li><strong>GITHUB_TOKEN 的遞迴抑制</strong>：workflow 裡用預設 token 做的 push、merge 等動作，<strong>不會觸發</strong>其他 workflow——這是 GitHub 防止「workflow 觸發 workflow」無限迴圈的保護。醫生的 CCChange 就撞上它：auto-merge workflow 合併 PR 產生的 push <em>不會</em>啟動 deploy.yml，網站會默默停在舊版。他的解法：<code>workflow_dispatch</code> 是文件明載的例外——auto-merge 最後一步用 <code>gh workflow run deploy.yml</code> 顯式接力（這需要 <code>actions: write</code> 權限）。</li>
+  <li><strong>schedule 會被停用</strong>：public repo 60 天沒有 commit 活動，排程 workflow 會被自動停用（會發通知信）。長期無人動的 repo 上的 cron 不是永動機。</li>
+</ul>
+
+<h2>醫生的觸發選擇學</h2>
+<p>vox-styled-reels 的 issue-to-card workflow 用 <code>issues: types: [labeled]</code> 而<strong>不是</strong>
+<code>[opened, labeled]</code>——因為「開 issue 時就帶著 label」會同時發出 opened 和 labeled 兩個事件，
+兩個一起監聽就會 double-run、在同一條 branch 上打架。<code>labeled</code> 單獨監聽同時涵蓋
+「開單即帶 label」與「後來才貼 label」兩種情境。觸發事件的選擇是設計，不是填空。</p>
+
+<h2>常見的坑</h2>
+<ul>
+  <li><strong>paths 過濾讓 run「完全不出現」</strong>：不是跑了被跳過，是根本沒有 run 記錄。設了 <code>paths:</code> 的部署 workflow，改了範圍外的檔案就不部署——忘記這件事會以為 CI 壞了。反過來，該設不設（例如 wiki 發佈 workflow 沒設 paths），高頻 push 的 repo 會空跑不停——你的 repo-wiki skill 文件裡就有這條警告。</li>
+  <li><strong><code>pull_request</code> 預設只對 opened / synchronize / reopened 反應</strong>：想在「PR 被貼 label」「轉出 draft」時觸發要自己加 types。</li>
+  <li><strong>用 PAT（個人 token）繞過遞迴抑制</strong>：可行但危險——迴圈保護沒了，就要自己保證不會 A 觸發 B、B 又觸發 A。能用 dispatch 顯式接力就別繞。</li>
+  <li><strong>手動後門缺席</strong>：純 schedule 的 workflow 失敗後，你只能等下一個週期驗證修復。永遠加一個 <code>workflow_dispatch:</code>（一行而已），除錯時能立刻重跑。</li>
+</ul>
+
+<section class="takeaways">
+<h2>✅ Takeaways</h2>
+<ul>
+  <li>CI 掛 <code>pull_request</code>（合併前把關），部署掛 <code>push: branches: [main]</code>（合併後行動）。</li>
+  <li>cron 是 UTC（台北 −8）、不準點、公開 repo 60 天不活動會停用。</li>
+  <li>GITHUB_TOKEN 做的 push/merge 不觸發其他 workflow；接力用 <code>workflow_dispatch</code> 顯式 dispatch。</li>
+  <li>每個自動 workflow 都加 <code>workflow_dispatch:</code> 手動後門。</li>
+  <li>觸發事件要挑（labeled vs opened）、過濾器要想（paths 的兩面刃）——這是設計決策。</li>
+</ul>
+</section>
+
+<h2>測驗</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="09-workflow.html">← 09 workflow</a>
+  <a href="11-permissions-secrets.html">11 permissions-secrets →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "10-trigger",
+  "questions": [
+    {
+      "q": "auto-merge workflow 用 GITHUB_TOKEN 合併了 PR，但掛在 push main 上的 deploy.yml 沒有跑，網站停在舊版。原因是？",
+      "type": "single",
+      "options": [
+        {"t": "GITHUB_TOKEN 產生的 push 事件被 GitHub 抑制，不會觸發其他 workflow——這是防無限迴圈的保護", "correct": true, "why": "正解。解法是 auto-merge 最後用 gh workflow run 顯式 dispatch deploy（workflow_dispatch 是抑制的例外）。"},
+        {"t": "deploy.yml 的 YAML 寫錯了", "correct": false, "why": "同一個 deploy.yml 在人工 push 時正常運作——問題出在事件來源。"},
+        {"t": "免費額度用完了", "correct": false, "why": "額度用盡會有明確通知，不會默默不觸發。"},
+        {"t": "兩個 workflow 不能在同一天執行", "correct": false, "why": "沒有這種限制。"}
+      ]
+    },
+    {
+      "q": "你要讓一個 workflow 在台北時間每天早上 6:30 跑。正確的 cron 是？",
+      "type": "single",
+      "options": [
+        {"t": "30 22 * * *", "correct": true, "why": "正解。cron 用 UTC；台北 06:30 = UTC 前一天 22:30。"},
+        {"t": "30 6 * * *", "correct": false, "why": "這是 UTC 06:30 = 台北 14:30——忘了換時區是 schedule 第一坑。"},
+        {"t": "30 22 * * * Asia/Taipei", "correct": false, "why": "GitHub 的 schedule 不支援時區欄位，只認 UTC。"},
+        {"t": "0 630 * * *", "correct": false, "why": "cron 格式是 分 時 日 月 週，沒有 630 這種寫法。"}
+      ]
+    },
+    {
+      "q": "「開 issue 時就帶著 label」的情境下，為什麼醫生的 issue 驅動 workflow 只監聽 labeled、不監聽 [opened, labeled]？",
+      "type": "single",
+      "options": [
+        {"t": "帶 label 開單會同時發 opened 與 labeled 兩個事件，兩個都聽會 double-run；labeled 單獨監聽已涵蓋所有進入路徑", "correct": true, "why": "正解。兩個 run 會在同一條產出 branch 上互相打架；觸發事件的集合要以「每個情境恰好觸發一次」為目標設計。"},
+        {"t": "opened 事件讀不到 label 資訊", "correct": false, "why": "opened 的 payload 讀得到 label；問題在重複觸發，不在資料。"},
+        {"t": "labeled 事件比較省額度", "correct": false, "why": "單次觸發成本相同；省的是重複跑。"},
+        {"t": "GitHub 不允許同時監聽兩個 issue 事件", "correct": false, "why": "types 可以列多個；能不能與該不該是兩回事。"}
+      ]
+    },
+    {
+      "q": "關於 paths 過濾器，下列敘述哪些正確？",
+      "type": "multi",
+      "options": [
+        {"t": "push 沒碰到 paths 範圍時，該 workflow 完全不會產生 run 記錄", "correct": true, "why": "正解。不是「跑了但跳過」，是根本不觸發——除錯時要先想到這層。"},
+        {"t": "部署類 workflow 設 paths 後，改到範圍外的檔案不會觸發部署", "correct": true, "why": "正解。網站內容和 workflow 檔分屬不同目錄時，改 workflow 本身不重新部署——有時這正是你要的，有時是意外。"},
+        {"t": "高頻 auto-commit 的 repo，發佈類 workflow 不設 paths 會一直空跑", "correct": true, "why": "正解。每次 push 都全量執行——paths 是省額度也是降噪。"},
+        {"t": "paths 過濾也自動套用到 schedule 觸發", "correct": false, "why": "paths 只對 push/pull_request 有意義；schedule 是時間驅動，沒有「改了哪些檔」的概念。"}
+      ]
+    },
+    {
+      "q": "為什麼「每個自動化 workflow 都應該加一行 workflow_dispatch:」？",
+      "type": "multi",
+      "options": [
+        {"t": "排程或事件觸發失敗後，能立刻手動重跑驗證修復，不用等下個週期或製造假事件", "correct": true, "why": "正解。這是維運後門的核心價值。"},
+        {"t": "它是 GITHUB_TOKEN 事件抑制機制文件明載的例外，能當 workflow 之間的顯式接力管道", "correct": true, "why": "正解。醫生的 auto-merge → deploy 接力就是靠它。"},
+        {"t": "可以配 inputs 做參數化執行（如指定重建哪個項目）", "correct": true, "why": "正解。vox 的 release-cards 就用 inputs 支援「重建指定卡片」。"},
+        {"t": "加了它 workflow 會跑得比較快", "correct": false, "why": "與執行速度無關。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

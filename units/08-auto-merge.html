@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>08 auto-merge — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>第 2 章 · 單元 08</span></nav>
+</header>
+<main>
+<h1><code>auto-merge</code></h1>
+<p class="unit-tagline">「checks 綠了就自動合併」——把等待 CI 的時間還給人。醫生每週合 30 幾個 MR 的秘密之一。</p>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據</span>
+  你目前的合併都是手動的（handoff-end 甚至把「確認已合併」寫成人工檢查程序）。
+  auto-merge 是這段流程自動化的第一步：你批准方向，機器等綠燈、按按鈕、刪 branch。
+  注意你的多數 repo 是 private——本單元會講到 Free 方案在 private repo 上的一個重要限制。
+</section>
+
+<h2>這是什麼</h2>
+<p>兩種實現方式，適用情境不同：</p>
+<h3>① 原生 auto-merge（設定即用）</h3>
+<pre><code># 前提：repo Settings → General → 勾選 "Allow auto-merge"
+gh pr merge 34 --auto --squash --delete-branch</code></pre>
+<p>意思是「等這個 PR 的合併條件全部滿足時，自動用 squash 合併」。合併條件來自
+<strong>branch protection / rulesets</strong>（例如 required status checks：CI 必須綠）。
+PR 掛上 auto-merge 後，你就可以去做別的事；CI 綠了它自己合。</p>
+<h3>② Workflow 自製 auto-merge（醫生的做法）</h3>
+<p>用 Actions 監聽「CI 跑完」事件，在 workflow 裡自行檢查條件後執行 <code>gh pr merge</code>。
+醫生的 CCChange repo（每日自動出刊 Claude Code changelog 講義）就是這樣：AI 排程開 PR →
+CI 綠 → workflow 檢查一串防護條件 → 自動 squash 合併 → 觸發部署。適合需要<strong>自訂條件</strong>
+（誰開的 PR？改了哪些檔案？）的無人值守流程。</p>
+
+<h2>醫生的防護清單（無人值守的教科書）</h2>
+<p>他的 auto-merge workflow 在合併前檢查五件事，每一條都值得抄：</p>
+<table>
+  <tr><th>檢查</th><th>為什麼</th></tr>
+  <tr><td>PR 不是來自 fork</td><td>fork PR 等於陌生人的程式碼；自動合併它 = 把 repo 送人。</td></tr>
+  <tr><td>不是 draft、base 是 main</td><td>draft 是「還沒好」的明示；合錯目標 branch 的事故不該由自動化放大。</td></tr>
+  <tr><td>作者是擁有者/協作者（API 查證，不信 PR 內容）</td><td>判斷依據一律來自 GitHub API 的事實，不來自 PR 自己聲稱的任何東西。</td></tr>
+  <tr><td>必須掛特定 label（如 <code>claude-daily</code>）</td><td>label 是人為的「准許自動合併」開關——沒掛的 PR 永遠留給人審。</td></tr>
+  <tr><td>改動只限內容目錄（如 <code>src/content/</code>）</td><td>動到 workflow、build script 的 PR 一律要人看——否則 AI（或攻擊者）可以改掉檢查它自己的規則。</td></tr>
+</table>
+<p>另外還有一條時序防護：合併前<strong>重新讀取</strong>當下的 check 狀態，而不是相信事件發生當時的快照——
+事件與合併之間，別的檢查可能已經轉紅。</p>
+
+<h2>常見的坑</h2>
+<ul>
+  <li><strong>沒有任何 required checks 時，<code>--auto</code> 立刻合併</strong>：auto-merge 的語意是「等條件滿足」；條件是空集合就是「現在」。想要「等 CI 綠」，CI 必須被設為 required status check，否則 CI 紅著照樣合。</li>
+  <li><strong>Free 方案的 private repo 不能設 branch protection / rulesets 的強制規則</strong>：這對你直接相關——你的 repo 大多 private。三條路：(a) 該 repo 夠重要就轉 public 或升級 Pro；(b) 用醫生的 workflow 自製法（不依賴 branch protection，Actions 在 private repo 免費額度內可用）；(c) 維持手動合併。</li>
+  <li><strong>把「檢查 CI」寫成查 commit status API</strong>：GitHub 有新舊兩套回報機制——Actions 的結果在 <em>check runs</em> API；舊的 <em>combined status</em> API 對「只有 Actions 檢查」的 commit 會回報 pending/0 checks，讓你的守門邏輯變成永遠放行或永遠卡住。醫生的 workflow 註解特別標了這個坑。</li>
+  <li><strong>自動化迴圈</strong>：自動合併 → 觸發部署 → 部署 commit 又觸發……第 10 單元會講 GitHub 的抑制機制與正確的接力方式。</li>
+</ul>
+
+<section class="tip">
+  <span class="tip-title">💡 給你的優化建議</span>
+  你的 handoff-end「完成路徑」目前是：確認合併 → 切回 main → 刪 branch，全手動。
+  導入方式（漸進）：先在一個 public repo（如 aiden-study）開 "Allow auto-merge" + 把 CI 設 required，
+  流程改成「開 PR 後掛 <code>gh pr merge --auto --squash --delete-branch</code>」——
+  handoff-end 那套「比較變更確認已合併」的檢查依然照跑，只是合併本身不再等你。
+</section>
+
+<section class="takeaways">
+<h2>✅ Takeaways</h2>
+<ul>
+  <li>原生 auto-merge = 「條件滿足時自動合併」；條件來自 branch protection 的 required checks。</li>
+  <li>沒有 required checks，<code>--auto</code> 就是立刻合併——CI 紅綠與它無關。</li>
+  <li>Free 方案 private repo 無法強制 branch protection；替代方案是 workflow 自製 auto-merge。</li>
+  <li>無人值守的防護：拒 fork、拒 draft、驗作者、要 label、限檔案路徑、合併前重讀 check 狀態。</li>
+  <li>判斷依據永遠來自 API 事實，不來自 PR 自己聲稱的內容。</li>
+</ul>
+</section>
+
+<h2>測驗</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="07-release.html">← 07 release</a>
+  <a href="09-workflow.html">09 workflow →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "08-auto-merge",
+  "questions": [
+    {
+      "q": "repo 開了 Allow auto-merge，但沒有設任何 branch protection / required checks。此時對一個 CI 還在跑的 PR 執行 gh pr merge --auto --squash，會發生什麼？",
+      "type": "single",
+      "options": [
+        {"t": "立刻合併——沒有未滿足的條件，「等條件滿足」就是「現在」", "correct": true, "why": "正解。auto-merge 等的是 required 條件；CI 沒被設為 required 就不在等待清單上，紅綠都無關。"},
+        {"t": "等 CI 跑完且綠燈才合併", "correct": false, "why": "只有把該 CI 設為 required status check 才會等它——這是 auto-merge 最容易誤解的地方。"},
+        {"t": "報錯，因為 auto-merge 必須有 branch protection", "correct": false, "why": "不會報錯；它只是沒有東西可等。"},
+        {"t": "PR 轉為 draft 等待人工確認", "correct": false, "why": "沒有這種行為。"}
+      ]
+    },
+    {
+      "q": "你的多數 repo 是 private 且用 GitHub Free。想要「CI 綠了才自動合併」，可行的路有哪些？",
+      "type": "multi",
+      "options": [
+        {"t": "用 Actions workflow 自製：監聽 CI 完成事件，檢查條件後執行 gh pr merge", "correct": true, "why": "正解。醫生的做法；不依賴 branch protection，private repo 每月免費額度內可用。"},
+        {"t": "把該 repo 轉成 public，免費使用 branch protection + 原生 auto-merge", "correct": true, "why": "正解。內容不敏感的 repo 這是最省事的路。"},
+        {"t": "升級 GitHub Pro，private repo 解鎖 branch protection", "correct": true, "why": "正解。花錢換設定即用。"},
+        {"t": "Free private repo 直接用原生 auto-merge 等 required checks", "correct": false, "why": "Free 方案的 private repo 設不了強制性的 required checks，「等綠燈」無從談起。"}
+      ]
+    },
+    {
+      "q": "醫生的自製 auto-merge 為什麼堅持「作者身分、fork 與否、改動路徑都用 GitHub API 查，不看 PR 自己提供的內容」？",
+      "type": "single",
+      "options": [
+        {"t": "PR 的內容（描述、commit、檔案）都是提交者可控的；防護若依賴可被攻擊者填寫的欄位就形同虛設", "correct": true, "why": "正解。無人值守系統的判斷依據必須來自平台事實（API），不能來自被審查對象的自我聲明。"},
+        {"t": "API 查詢比較快", "correct": false, "why": "速度差異不是重點，可信度才是。"},
+        {"t": "PR 內容有字數限制，資訊不完整", "correct": false, "why": "與字數無關。"},
+        {"t": "這只是程式風格偏好", "correct": false, "why": "這是安全設計原則，不是風格。"}
+      ]
+    },
+    {
+      "q": "自製 auto-merge 的防護裡有一條「改動只能落在 src/content/，否則不自動合併」。它防的是什麼？",
+      "type": "single",
+      "options": [
+        {"t": "防止 PR 修改 workflow 或 build script——否則自動化流程可以被 PR 改掉「檢查它自己」的規則", "correct": true, "why": "正解。能動 CI 設定的 PR 若被自動合併，整套防護就能被繞過；這類 PR 必須留給人審。"},
+        {"t": "減少 CI 運算量", "correct": false, "why": "路徑限制是安全邊界，不是效能優化。"},
+        {"t": "避免 merge conflict", "correct": false, "why": "衝突與否由 Git 判定，與這條防護無關。"},
+        {"t": "GitHub 規定自動合併只能動特定目錄", "correct": false, "why": "GitHub 沒有這種規定，是醫生自己設的邊界。"}
+      ]
+    },
+    {
+      "q": "關於「合併前重新讀取 check 狀態，而不是用觸發事件當時的快照」，下列敘述哪些正確？",
+      "type": "multi",
+      "options": [
+        {"t": "事件 payload 是快照：CI 綠了之後、合併之前，別的檢查可能已轉紅", "correct": true, "why": "正解。時間差就是風險窗口，決策前重讀當下狀態。"},
+        {"t": "查詢時要用 check runs API，因為 Actions 的結果不會完整反映在舊的 combined status API", "correct": true, "why": "正解。對只有 Actions 檢查的 commit，combined status 會回 pending/0——守門邏輯會被架空。"},
+        {"t": "這是過度設計，事件當下的狀態已經足夠", "correct": false, "why": "多 workflow 並行時各自完成時間不同，快照決策會放行「部分綠」的 PR。"},
+        {"t": "同樣的「重讀當下狀態」原則也適用於你自己 handoff 流程裡的合併確認", "correct": true, "why": "正解。你的 skill 已要求 fetch --prune 後再確認——同一個原則：決策用最新事實，不用記憶。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

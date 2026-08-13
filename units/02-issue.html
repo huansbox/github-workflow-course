@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 issue — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>第 1 章 · 單元 02</span></nav>
+</header>
+<main>
+<h1><code>issue</code></h1>
+<p class="unit-tagline">Issue 不只是「回報問題」——它是待辦事項、規格書、審核點，以及自動化的觸發器。</p>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據</span>
+  <code>gh issue</code> 出現 1211 次——你已經在用 issue 當 tracker，你的 to-issues skill 更是把 issue 當規格書
+  （What to build + acceptance criteria checkboxes）。這一單元補的是你可能還沒用滿的部分：
+  closing keywords、label 驅動自動化、issue template，以及 <code>gh issue edit --body</code> 的整體覆蓋陷阱——
+  你的 skill 裡那套 read→modify→verify 流程，正是為了這個陷阱存在的。
+</section>
+
+<h2>這是什麼</h2>
+<p>一則 issue = 標題 + Markdown body + 討論串 + 一組 metadata（label、assignee、milestone、關聯 PR）。
+醫生的用法把它的三重身分用滿：</p>
+<ul>
+  <li><strong>待辦事項</strong>：開 issue = 收工作；關 issue = 完工。清單即 backlog。</li>
+  <li><strong>審核點</strong>：「它分析問題完，我在 issue 上看他的計畫，批准」——AI 把計畫貼在 issue 留言，人只做批准。</li>
+  <li><strong>自動化觸發器</strong>：他的 vox-styled-reels repo 裡，對 issue 貼上 <code>card</code> label 就會觸發 workflow 把 issue 內容轉成影片卡片再開 PR（第 10 單元會拆解這個機制）。</li>
+</ul>
+
+<h2>怎麼用</h2>
+<h3>指令面</h3>
+<pre><code>gh issue create --title "..." --body-file spec.md --label bug
+gh issue list --state open --label bug
+gh issue view 12 --comments
+gh issue comment 12 --body "進度：..."
+gh issue close 12 --comment "完成，見 PR #34"
+gh issue edit 12 --add-label blocked</code></pre>
+
+<h3>Body 裡的兵器</h3>
+<ul>
+  <li><strong>Task list</strong>：<code>- [ ] 條目</code>。GitHub 會在 issue 列表顯示完成度（3/5），你的 acceptance criteria 就是這個。</li>
+  <li><strong>Closing keywords</strong>：PR 描述寫 <code>Closes #12</code>（或 fixes / resolves），PR 合併進 default branch 時自動關掉 issue。這是 issue 與 PR 之間最重要的一條線。</li>
+  <li><strong>引用</strong>：任何留言寫 <code>#12</code> 會建立雙向連結；commit message 寫 <code>#12</code> 也會出現在 issue 的時間軸上。</li>
+  <li><strong>Sub-issues</strong>：issue 可以掛子 issue 形成父子階層（你的 to-spec → child issues 結構可以直接用上）。task list 是輕量版；子項需要各自的討論串與狀態時才升級成 sub-issue。</li>
+</ul>
+
+<h3>Issue template</h3>
+<p>在 repo 放 <code>.github/ISSUE_TEMPLATE/task.md</code>（或 .yml 表單版），開 issue 時自動套格式。
+對你的實際意義：to-issues 的 Issue template（What to build / Acceptance criteria / Testing decisions…）可以做成 repo 的
+issue template，讓人手開的 issue 和 AI 發布的 issue 長一樣。</p>
+
+<h2>常見的坑</h2>
+<ul>
+  <li><strong><code>gh issue edit --body</code> 是整體覆蓋</strong>：gh 沒有「只改一行」的 API——要勾一個 checkbox，就得讀出全文、改那一行、整包寫回。中間若有人動過 body，你會把對方的修改輾掉。你的 handoff-end 為此規定了「讀→只改該行→byte 比對→送出前再讀一次」，這不是儀式，是這個 API 形狀逼出來的。</li>
+  <li><strong>Closing keywords 只在合併進 default branch 時生效</strong>：merge 到其他 branch 不會關 issue；直接 push（不走 PR）時 commit message 裡的 <code>fixes #12</code> 也會關——有時是驚喜，有時是事故。</li>
+  <li><strong>寫成小說的 issue</strong>：body 塞滿討論過程，後來的人分不清哪句是結論。你的 skill 的作法是對的：body 只放規格與驗收，進度與討論放留言。</li>
+  <li><strong>tracker 寫入權限</strong>：能讀、能 clone 一個 repo 不代表該把工作項寫進人家的 tracker。你的 CLAUDE.md 已把這條列為授權規則。</li>
+</ul>
+
+<section class="tip">
+  <span class="tip-title">💡 給你的優化建議</span>
+  <ol style="margin:.3rem 0; padding-left:1.3rem">
+    <li>把 to-issues 的模板做成 <code>.github/ISSUE_TEMPLATE/</code>，人工開單也走同一格式。</li>
+    <li>PR 一律寫 <code>Closes #N</code>，讓「merge 自動關 issue」取代手動收尾——這是醫生流程裡「完成就是 PR」的機械保證。</li>
+    <li>用 label 表達狀態機（如 <code>needs-review</code> / <code>blocked</code> / <code>claude-approved</code>），之後第 10 單元你會看到 label 可以直接當 workflow 的觸發條件。</li>
+  </ol>
+</section>
+
+<section class="takeaways">
+<h2>✅ Takeaways</h2>
+<ul>
+  <li>Issue 的三重身分：待辦、規格與審核點、自動化觸發器。</li>
+  <li>PR 描述寫 <code>Closes #N</code>，合併進 default branch 時自動關 issue。</li>
+  <li>task list 給輕量子項；需要獨立討論串時才用 sub-issue。</li>
+  <li><code>gh issue edit --body</code> 永遠是整包覆蓋——併發修改要靠讀回比對防守。</li>
+  <li>body 放規格與驗收，進度放留言；別把 issue 寫成小說。</li>
+</ul>
+</section>
+
+<h2>測驗</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="01-github-flow.html">← 01 github-flow</a>
+  <a href="03-pull-request.html">03 pull-request →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "02-issue",
+  "questions": [
+    {
+      "q": "PR 描述裡寫了 Closes #12，什麼時候 issue #12 會被自動關閉？",
+      "type": "single",
+      "options": [
+        {"t": "PR 合併進 default branch 時", "correct": true, "why": "正解。closing keywords 只在變更進入 default branch 時生效。"},
+        {"t": "PR 開出來的當下", "correct": false, "why": "開 PR 只會建立連結（issue 會顯示 linked PR），不會關閉。"},
+        {"t": "PR 合併進任何 branch 時", "correct": false, "why": "合併進非 default branch 不會觸發自動關閉——這是常見誤解。"},
+        {"t": "要等第一個 CI workflow 跑完", "correct": false, "why": "CI 與 issue 關閉機制無關。"}
+      ]
+    },
+    {
+      "q": "你要用 gh 把遠端 issue body 裡的一個 acceptance checkbox 從 [ ] 改成 [x]。下列哪些是必要的防守？",
+      "type": "multi",
+      "options": [
+        {"t": "先讀出完整 body，只修改目標那一行", "correct": true, "why": "正解。gh issue edit --body 是整包覆蓋，必須以現行全文為基底。"},
+        {"t": "送出前再讀一次，確認這段期間沒人動過 body", "correct": true, "why": "正解。讀與寫之間若有併發修改，直接覆蓋會輾掉對方的變更。"},
+        {"t": "確認目標行在 fenced code block 之外且只匹配一行", "correct": true, "why": "正解。code block 裡的 - [ ] 是示例不是核取框；多行匹配時亂猜會勾錯條目。"},
+        {"t": "不需要防守，gh 會自動做三方合併", "correct": false, "why": "gh 不做任何合併，--body 給什麼就存什麼。"}
+      ]
+    },
+    {
+      "q": "task list（- [ ]）和 sub-issue 怎麼選？",
+      "type": "single",
+      "options": [
+        {"t": "子項只需要勾/不勾就用 task list；子項需要獨立討論串與狀態時用 sub-issue", "correct": true, "why": "正解。task list 是輕量核取清單；sub-issue 是完整的 issue，有自己的留言、label、assignee。"},
+        {"t": "永遠用 sub-issue，比較正式", "correct": false, "why": "為每個小勾選項開完整 issue 是管理負擔，不是正式。"},
+        {"t": "task list 已被 sub-issue 取代，不建議再用", "correct": false, "why": "兩者並存且用途不同；acceptance criteria 用 task list 正合適。"},
+        {"t": "隨便選，兩者功能相同", "correct": false, "why": "功能不同：task list 不能單獨指派、不能單獨討論。"}
+      ]
+    },
+    {
+      "q": "依照醫生「issue 是審核點」的用法，AI 分析完問題之後、動手寫 code 之前，正確的流程是？",
+      "type": "single",
+      "options": [
+        {"t": "AI 把計畫貼在 issue 留言，人批准後才開 branch 實作", "correct": true, "why": "正解。計畫寫進 issue 留言，讓批准這個動作留下紀錄，之後 PR 再對照計畫審。"},
+        {"t": "AI 直接改 issue body，把計畫寫進規格裡", "correct": false, "why": "body 是規格與驗收的地盤；計畫是過程產物，放留言才不會混淆事實來源。"},
+        {"t": "AI 開 draft PR 把計畫寫在 PR 描述就好，不用回 issue", "correct": false, "why": "計畫審核在寫 code 之前，此時還不該有 PR；先斬後奏會讓批准失去意義。"},
+        {"t": "計畫放在本機檔案，口頭跟人確認即可", "correct": false, "why": "審核紀錄不可追溯；跨 session、跨裝置就斷線了。"}
+      ]
+    },
+    {
+      "q": "關於 issue 的 metadata 與自動化，下列敘述哪些正確？",
+      "type": "multi",
+      "options": [
+        {"t": "對 issue 貼 label 這個動作本身可以觸發 GitHub Actions workflow", "correct": true, "why": "正解。on: issues: types: [labeled] 就是醫生 issue-to-card 的觸發方式，第 10 單元詳解。"},
+        {"t": "issue template 放在 .github/ISSUE_TEMPLATE/，能讓開單格式固定", "correct": true, "why": "正解。md 版提供預填文字，yml 表單版還能做必填欄位。"},
+        {"t": "commit message 裡寫 #12，該 commit 會出現在 issue #12 的時間軸", "correct": true, "why": "正解。引用是雙向的，這讓 issue 成為工作的集散地。"},
+        {"t": "能 clone 一個 repo 就代表可以把自己的待辦寫進該 repo 的 issue tracker", "correct": false, "why": "讀取權與 tracker 寫入授權是兩回事——對別人的 repo 開工作 issue 前要先確認這是對方接受的用法。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+# 把這個純靜態課程網站部署到 GitHub Pages。
+# 這個檔案同時是第 9 單元（workflow）的逐行教材——單元頁裡的範例就是它。
+#
+# 注意：GitHub Free 方案的 private repo 無法啟用 Pages。
+# 本 repo 維持 private 期間，這個 workflow 是教材 + 備而不用；
+# repo 轉 public（或帳號升級 Pro）後即可直接生效。
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時只跑一個部署；進行中的不取消（取消部署會留下半套狀態）
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .          # 零 build：整個 repo 就是網站
+      - id: deployment
+        uses: actions/deploy-pages@v4

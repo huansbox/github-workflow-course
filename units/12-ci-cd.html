@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>12 ci-cd — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>第 3 章 · 單元 12</span></nav>
+</header>
+<main>
+<h1><code>ci-cd</code></h1>
+<p class="unit-tagline">最後一課：把前面 11 個單字組裝成醫生那條「沒了，毫無技巧，全是感情」的流水線。</p>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據</span>
+  <code>gh run</code> 154 次——你偶爾看過 run 結果，但還沒有一條屬於自己的流水線。
+  這一課結束時，你會知道每一節車廂是哪個單元教的，以及第一條流水線該從你的哪個 repo 開始。
+</section>
+
+<h2>兩個縮寫的實務意義</h2>
+<ul>
+  <li><strong>CI（Continuous Integration）</strong>：每個 PR 自動跑檢查（lint、test、build），<strong>在合併前</strong>擋住壞變更。CI 的產出是紅綠燈。</li>
+  <li><strong>CD（Continuous Deployment）</strong>：merge 進 main 後自動部署/發布，<strong>在合併後</strong>把 main 變成現實。CD 的產出是上線的東西。</li>
+  <li>一句話：<strong>CI 守門，CD 送貨</strong>。掛的觸發事件不同（<code>pull_request</code> vs <code>push: main</code>），需要的權限不同（read vs write），這就是為什麼它們通常是兩個 workflow 檔。</li>
+</ul>
+
+<h2>醫生的完整流水線（每節車廂的出處）</h2>
+<pre><code>Issue（待辦＋計畫審核）..................... 單元 02
+  → Claude 開 branch 寫 code、開 PR ........ 單元 01、03
+  → CI 檢查（pull_request 觸發）............ 單元 09、10
+  → 人看 PR：diff、截圖、可疑之處 .......... 單元 03
+  → auto-merge（綠燈＋防護清單→squash）..... 單元 04、08
+  → deploy（push main 觸發；dispatch 接力）.. 單元 10
+  → release + changelog（自動上版 Beta）..... 單元 06、07
+  → schedule（每日 cron 定期任務）.......... 單元 10</code></pre>
+<p>注意這條線上<strong>人只出現兩次</strong>：批准 issue 上的計畫、看 PR。其餘全是機器。
+這就是「一天合 30 幾個 MR」的容量從哪來——人的時間只花在判斷，不花在搬運。</p>
+
+<h2>組裝時的三個實務工具</h2>
+<h3>① concurrency：同類 run 不互撞</h3>
+<pre><code># CI：新 push 讓舊 run 失去意義 → 取消它，省時間省額度
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# 部署：取消進行中的部署會留下半套狀態 → 排隊不取消
+concurrency:
+  group: pages
+  cancel-in-progress: false</code></pre>
+<p>同一個設定，CI 和部署的正確值相反——照抄別人的 concurrency 前先想這一層。</p>
+<h3>② matrix：一份定義，多份執行</h3>
+<pre><code>strategy:
+  matrix:
+    python: ["3.11", "3.12", "3.13"]
+steps:
+  - uses: actions/setup-python@v5
+    with:
+      python-version: ${{ matrix.python }}</code></pre>
+<p>一個 job 定義展開成三個平行 job。醫生的 release-cards 用它「一張卡一台 runner」平行渲染影片。</p>
+<h3>③ 除錯迴路：gh run</h3>
+<pre><code>gh run list --workflow=ci.yml     # 最近的 run
+gh run watch                      # 即時盯著跑
+gh run view 12345 --log-failed    # 只看失敗 step 的 log（最常用）
+gh run rerun 12345 --failed       # 只重跑失敗的 job</code></pre>
+
+<h2>常見的坑</h2>
+<ul>
+  <li><strong>CI 綠 ≠ 沒問題</strong>：CI 只驗證你寫了的檢查。測試薄弱的 repo，綠燈只代表「沒有壞得很明顯」。auto-merge 的信心上限=測試的信心上限——要無人值守，先投資測試。</li>
+  <li><strong>部署 workflow 用 cancel-in-progress: true</strong>：新 push 取消進行中的部署，網站可能停在半新不舊的狀態。CCChange 的註解特別寫了這條。</li>
+  <li><strong>在 CI 裡重現不了本機沒有的失敗</strong>：環境差異（時區、locale、檔案大小寫——macOS 不分大小寫、Linux 分！）是常客。你在 mac/Windows 之間切換開發，Linux runner 是第三個環境。</li>
+  <li><strong>一開始就想全自動</strong>：醫生的流水線是長出來的，不是一天蓋好的。順序建議：先 CI（最便宜、立刻有感）→ 手動合併一陣子觀察 CI 可信度 → auto-merge → CD。</li>
+</ul>
+
+<section class="tip">
+  <span class="tip-title">💡 你的第一條流水線（具體建議）</span>
+  <ol style="margin:.3rem 0; padding-left:1.3rem">
+    <li><strong>CI 起手式</strong>：挑 <code>strava-sync</code>（Python、有排程需求的真專案）加一個 <code>ci.yml</code>：<code>pull_request</code> 觸發，跑 <code>uv run pytest</code> 與 lint。</li>
+    <li><strong>cron 起手式</strong>：它如果有「定期同步」需求，<code>schedule</code> + <code>workflow_dispatch</code> 正是教科書場景（secrets 放 API 金鑰，第 11 單元）。</li>
+    <li><strong>CD 起手式</strong>：本課程 repo 的 <code>deploy.yml</code> 已經是一個可抄的 Pages 部署範本。</li>
+    <li>之後每個新 repo 開場就帶 ci.yml——讓「PR 必有紅綠燈」成為你的 handoff 流程的機器版底線。</li>
+  </ol>
+</section>
+
+<section class="takeaways">
+<h2>✅ Takeaways</h2>
+<ul>
+  <li>CI 守門（pull_request、read 權限）、CD 送貨（push main、write 權限）——兩個檔各司其職。</li>
+  <li>concurrency：CI 取消舊 run、部署排隊不取消——方向相反。</li>
+  <li>matrix 把一份 job 定義展開成多份平行執行。</li>
+  <li>除錯三連：<code>gh run list</code> → <code>view --log-failed</code> → <code>rerun --failed</code>。</li>
+  <li>導入順序：CI → 觀察 → auto-merge → CD；auto-merge 的信心上限是測試的信心上限。</li>
+</ul>
+</section>
+
+<h2>測驗</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="11-permissions-secrets.html">← 11 permissions-secrets</a>
+  <a href="../index.html">完成！回目錄 →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "12-ci-cd",
+  "questions": [
+    {
+      "q": "CI 與 CD workflow 通常分成兩個檔案。哪些差異支持這個拆法？",
+      "type": "multi",
+      "options": [
+        {"t": "觸發事件不同：CI 掛 pull_request（合併前），CD 掛 push main（合併後）", "correct": true, "why": "正解。一個守門、一個送貨，時機天然不同。"},
+        {"t": "權限需求不同：CI 通常只要 read，CD 需要 write（部署、發版）", "correct": true, "why": "正解。分開讓 CI 可以安心跑在低權限沙箱（包括 fork PR）。"},
+        {"t": "concurrency 策略不同：CI 該取消過時的 run，部署不該取消進行中的", "correct": true, "why": "正解。混在一個檔裡就只能二選一。"},
+        {"t": "GitHub 規定一個 repo 只能有一個 workflow 檔做部署", "correct": false, "why": "沒有此規定；拆分是設計選擇不是平台限制。"}
+      ]
+    },
+    {
+      "q": "為什麼部署類 workflow 的 concurrency 要設 cancel-in-progress: false？",
+      "type": "single",
+      "options": [
+        {"t": "取消進行到一半的部署可能讓網站停在不完整狀態；排隊讓舊部署跑完、新的接著跑才安全", "correct": true, "why": "正解。CI 的「新 push 讓舊 run 無意義」邏輯不適用於有外部副作用的部署。"},
+        {"t": "false 比較省額度", "correct": false, "why": "相反，取消才省額度——但部署要的是正確不是省。"},
+        {"t": "部署 workflow 不支援取消", "correct": false, "why": "支援；正因為支援才要明確設定不取消。"},
+        {"t": "沒有差別，習慣問題", "correct": false, "why": "有實質差別：半套部署是真實事故來源。"}
+      ]
+    },
+    {
+      "q": "CI 在雲端紅了，本機卻一切正常。下列哪些是常見的真實原因？",
+      "type": "multi",
+      "options": [
+        {"t": "檔案名大小寫：macOS 檔案系統不分大小寫、Linux runner 分", "correct": true, "why": "正解。import 'Utils' 對 utils.py 在 mac 上會過、在 Linux 上炸——跨平台開發者的經典。"},
+        {"t": "時區與 locale：runner 是 UTC/英文環境", "correct": true, "why": "正解。依賴本地時區或中文日期格式的測試在 CI 上常翻車。"},
+        {"t": "依賴版本：本機裝的和 CI 依 lockfile 裝的不一致", "correct": true, "why": "正解。這其實是 CI 在幫你抓「只在我機器上能跑」的問題——紅燈是功能不是故障。"},
+        {"t": "GitHub 的 runner 效能太差跑不動測試", "correct": false, "why": "效能影響時間不影響對錯；逾時另有 timeout 訊息可辨認。"}
+      ]
+    },
+    {
+      "q": "CI 的一個 run 失敗了，你想用最少的動作定位原因並驗證修復。最順的指令組合是？",
+      "type": "single",
+      "options": [
+        {"t": "gh run view <id> --log-failed 看失敗 step 的 log；修好 push 後 gh run watch 盯新 run", "correct": true, "why": "正解。--log-failed 直接跳到病灶，不用在幾百行 log 裡撈。"},
+        {"t": "刪掉 workflow 檔重新 commit 一次", "correct": false, "why": "重跑不等於除錯，而且丟失了失敗紀錄。"},
+        {"t": "到網頁上把整包 log 下載回來慢慢看", "correct": false, "why": "可行但繞遠路；終端機一行就能只看失敗部分。"},
+        {"t": "gh run delete 把失敗紀錄刪掉眼不見為淨", "correct": false, "why": "問題還在，下次 run 照樣紅。"}
+      ]
+    },
+    {
+      "q": "醫生的流水線裡，人只出現在兩個位置。是哪兩個？",
+      "type": "single",
+      "options": [
+        {"t": "批准 issue 上的計畫；review PR 的 diff 與證據", "correct": true, "why": "正解。人只做判斷（這個方向對嗎？這個變更可疑嗎？），執行、檢查、合併、部署、發版全部交給機器。"},
+        {"t": "手動合併 PR；手動部署", "correct": false, "why": "這兩件正是被 auto-merge 與 CD 拿走的搬運工作。"},
+        {"t": "寫 code；寫 changelog", "correct": false, "why": "code 大部分是 Claude 寫的，changelog 是 release 機制自動合成的。"},
+        {"t": "設定 cron；監控 runner", "correct": false, "why": "cron 設一次就不用管；runner 由 GitHub 維運。"}
+      ]
+    },
+    {
+      "q": "從零導入自動化，課程建議的順序與理由，哪個正確？",
+      "type": "single",
+      "options": [
+        {"t": "先 CI 觀察其可信度，再 auto-merge，最後 CD——因為 auto-merge 的信心上限就是測試的信心上限", "correct": true, "why": "正解。測試還薄就開無人值守合併，綠燈只是「沒壞得很明顯」；自動化要建立在可信的檢查上。"},
+        {"t": "先 CD，部署自動化最有感", "correct": false, "why": "沒有 CI 把關的自動部署=自動把壞版本送上線。"},
+        {"t": "一次全上，反正 workflow 檔都是現成的", "correct": false, "why": "每一段都需要觀察期調整（paths、權限、防護條件）；一次全上出事時分不清哪段的問題。"},
+        {"t": "先 auto-merge 省最多時間", "correct": false, "why": "auto-merge 依賴 required checks——沒有 CI 它根本沒有等待對象（第 8 單元的坑）。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

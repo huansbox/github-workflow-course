@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 pull-request — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>第 1 章 · 單元 03</span></nav>
+</header>
+<main>
+<h1><code>pull-request</code></h1>
+<p class="unit-tagline">PR 不是「請求合併」的表單，是一個掛在 branch 上的審核介面：diff、討論、檢查結果、證據截圖都收在這裡。</p>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據</span>
+  「pull request」在你的紀錄出現 2468 次，但 <code>gh pr</code> 只有 361 次——你談論 PR 多、用指令操作 PR 少。
+  你的 issue 完成協議要求「clean-context code review」；這單元要說的是：GitHub 的 PR review 介面
+  就是為這件事設計的原生載體，而 <code>gh pr</code> 能讓整個流程不離開終端機。
+</section>
+
+<h2>這是什麼</h2>
+<p>PR 的本體是「兩個 branch 之間的差異 + 圍繞這個差異的一切」：</p>
+<ul>
+  <li><strong>diff</strong>：base（通常 main）與 head（工作 branch）的差異。<strong>PR 跟著 branch 走</strong>——PR 開著時再 push 新 commit，會自動進同一個 PR。</li>
+  <li><strong>描述</strong>：做了什麼、為什麼、怎麼驗證、<code>Closes #N</code>。</li>
+  <li><strong>review</strong>：逐行留言 + 三種結論（Approve / Request changes / Comment）。</li>
+  <li><strong>checks</strong>：CI workflow 的紅綠燈直接顯示在 PR 上（第 12 單元）。</li>
+  <li><strong>附件</strong>：描述與留言可以貼圖。醫生的技巧：「UI 視覺的東西請 AI 用 playwright 截圖加在 MR note 裡」——把肉眼驗證的證據固定在審核紀錄上。</li>
+</ul>
+
+<h2>何時用</h2>
+<ul>
+  <li><strong>Draft PR</strong>：工作還沒完成但想讓 CI 先跑、或想讓人先看方向時，開 draft。draft 不能被合併，也不會請求 review。完成後按 Ready for review（或 <code>gh pr ready</code>）。</li>
+  <li><strong>自己審自己的 PR</strong>：單人 repo 沒有第二個人，但 PR 仍有價值——它強迫你在合併前用 diff 視角重看一次變更，而且 GitHub 不允許 approve 自己的 PR，所以單人流程的「批准」就是合併動作本身。你的 clean-context review（開一個乾淨 context 的 AI 當審查者）正好補上「第二雙眼睛」的缺。</li>
+</ul>
+
+<h2>怎麼用</h2>
+<pre><code># 開 PR（--fill 用 commit message 當標題與描述）
+gh pr create --fill --body "Closes #12"
+gh pr create --draft --title "WIP: 重構驗證層"
+
+# 看與審
+gh pr list
+gh pr view 34 --comments        # 描述與討論
+gh pr diff 34                   # 終端機看 diff
+gh pr checks 34                 # CI 紅綠燈
+gh pr checkout 34               # 把 PR 的 branch 抓到本地跑跑看
+
+# review 動作
+gh pr review 34 --approve
+gh pr review 34 --request-changes --body "邊界條件沒處理"
+gh pr comment 34 --body "截圖如下 ..."
+
+# 收尾
+gh pr ready 34                  # draft → ready
+gh pr merge 34 --squash --delete-branch</code></pre>
+
+<h2>常見的坑</h2>
+<ul>
+  <li><strong>PR 是 branch 對 branch，不是 commit 對 commit</strong>：合併前又 push 了「順手改」，它就進了同一個 PR。要嘛忍住，要嘛另開 branch。</li>
+  <li><strong>review 中 force-push</strong>：rebase 後 force-push 會改寫 PR 的 commit 歷史，審查者原本留言的行可能對不上、已讀的 commit 標記失效。單人無所謂；有審查者時，review 期間用普通 commit 補，合併時再 squash。</li>
+  <li><strong>描述空白的 PR</strong>：<code>--fill</code> 至少把 commit message 帶進去。描述是給「三個月後的自己」和 changelog 生成器（第 7 單元）讀的——squash 合併時 PR 標題會成為 main 上的 commit message，寫爛標題等於寫爛歷史。</li>
+  <li><strong>用 PR 留言當聊天室</strong>：與這個 diff 無關的討論回 issue 去。PR 關掉後留言很少有人再翻。</li>
+</ul>
+
+<section class="tip">
+  <span class="tip-title">💡 給你的優化建議</span>
+  你已裝了 playwright 工具。UI 類變更可以把「render → 截圖 → 貼進 PR」變成慣例：
+  <code>gh pr comment 34 --body "..."</code> 本身不能附檔，但描述與留言支援 Markdown 圖片——把截圖 commit 進 repo 或貼上傳連結即可。
+  更省事的做法是請 Claude 在 PR 描述生成時直接附上驗證截圖，讓「看 PR」一眼分辨動了什麼。
+</section>
+
+<section class="takeaways">
+<h2>✅ Takeaways</h2>
+<ul>
+  <li>PR 跟著 branch 走：開著的 PR 會吸收該 branch 之後所有 push。</li>
+  <li>Draft PR 讓 CI 先跑、方向先看，且防止被誤合併。</li>
+  <li>review 三結論：Approve / Request changes / Comment；不能 approve 自己的 PR。</li>
+  <li>squash 合併時 PR 標題就是 main 的 commit message——標題品質＝歷史品質。</li>
+  <li>把驗證證據（測試輸出、截圖）固定在 PR 上，審核才有對象。</li>
+</ul>
+</section>
+
+<h2>測驗</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="02-issue.html">← 02 issue</a>
+  <a href="04-merge-strategy.html">04 merge-strategy →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "03-pull-request",
+  "questions": [
+    {
+      "q": "你開了 PR #34（branch: fix-login → main），review 還沒結束時你又在 fix-login 上 push 了兩個 commit。會發生什麼事？",
+      "type": "single",
+      "options": [
+        {"t": "新 commit 自動進入 PR #34 的 diff", "correct": true, "why": "正解。PR 是 branch 對 branch 的關係，開著的 PR 持續追蹤 head branch 的最新狀態。"},
+        {"t": "GitHub 自動開一個新的 PR 裝這兩個 commit", "correct": false, "why": "同一對 base/head 只會有一個開啟中的 PR。"},
+        {"t": "新 commit 被擋下，要等 PR 關閉才能 push", "correct": false, "why": "push 不受 PR 狀態限制（除非 branch protection 另有規定）。"},
+        {"t": "PR 自動轉回 draft 狀態", "correct": false, "why": "draft 與 ready 只由人（或 API）切換，push 不會改變它。"}
+      ]
+    },
+    {
+      "q": "Draft PR 的行為，下列哪些正確？",
+      "type": "multi",
+      "options": [
+        {"t": "CI workflow 照常在 draft PR 上執行", "correct": true, "why": "正解。這是 draft 的主要用途之一：先讓機器檢查，人晚點看。"},
+        {"t": "draft PR 無法被合併，直到轉為 ready for review", "correct": true, "why": "正解。merge 按鈕與 gh pr merge 都會被擋。"},
+        {"t": "draft PR 不會發出 review request 通知", "correct": true, "why": "正解。指定的 reviewer 要等轉 ready 才收到請求。"},
+        {"t": "draft PR 的 diff 對其他人不可見", "correct": false, "why": "可見性跟隨 repo 權限，draft 只是狀態標記，不是隱藏。"}
+      ]
+    },
+    {
+      "q": "有審查者正在 review 你的 PR，你想同步 main 的最新變更並整理 commit。最不干擾 review 的做法是？",
+      "type": "single",
+      "options": [
+        {"t": "先用普通 commit（merge main 或補 commit）讓 review 繼續，合併時用 squash 收乾淨", "correct": true, "why": "正解。review 期間保持 commit 歷史只增不改，審查者的進度與留言錨點不受影響；歷史整潔交給 squash。"},
+        {"t": "rebase 到最新 main 然後 force-push，歷史最乾淨", "correct": false, "why": "force-push 改寫歷史會讓審查者的留言錨點與已讀狀態失效——單人可以，有審查者時是干擾。"},
+        {"t": "關掉這個 PR，重開一個乾淨的", "correct": false, "why": "討論與 review 紀錄全部歸零，比 force-push 更糟。"},
+        {"t": "請審查者先停止 review，等你整理完再看", "correct": false, "why": "把流程成本轉嫁給人；工具層就能解決的事不需要協調成本。"}
+      ]
+    },
+    {
+      "q": "為什麼「squash 合併為主的 repo 要認真寫 PR 標題」？",
+      "type": "single",
+      "options": [
+        {"t": "squash 時 PR 標題會成為 main 上唯一那個 commit 的 message，也是 changelog 生成的素材", "correct": true, "why": "正解。工作 branch 的零碎 commit 會被壓掉，PR 標題就是留在歷史上的那行字（第 7 單元的 --generate-notes 也讀它）。"},
+        {"t": "GitHub 會拒絕標題太短的 PR", "correct": false, "why": "GitHub 對標題長度沒有限制。"},
+        {"t": "標題會影響 CI 執行順序", "correct": false, "why": "CI 觸發與標題無關。"},
+        {"t": "純粹是禮貌問題", "correct": false, "why": "有實質後果：爛標題會永久進入 main 歷史與 changelog。"}
+      ]
+    },
+    {
+      "q": "單人 repo 裡 PR 仍然值得開的理由，下列哪些成立？",
+      "type": "multi",
+      "options": [
+        {"t": "強迫自己在合併前用 diff 視角重看一次變更", "correct": true, "why": "正解。寫的時候看檔案，審的時候看 diff——視角不同，抓到的問題不同。"},
+        {"t": "CI 檢查掛在 PR 上，紅燈時自然不會合併", "correct": true, "why": "正解。PR 是 checks 的天然關卡（配 auto-merge 更是如此，見第 8 單元）。"},
+        {"t": "審核證據（截圖、測試輸出）固定在 PR 紀錄上，日後可追溯", "correct": true, "why": "正解。醫生審 AI 產出的介面就是 PR——diff、截圖、checks 都在同一頁。"},
+        {"t": "可以 approve 自己的 PR 留下正式批准紀錄", "correct": false, "why": "GitHub 不允許 approve 自己的 PR；單人流程的批准就是合併動作本身。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 merge-strategy — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>第 1 章 · 單元 04</span></nav>
+</header>
+<main>
+<h1><code>merge-strategy</code></h1>
+<p class="unit-tagline">合併 PR 的三種姿勢——merge commit、squash、rebase——決定 main 的歷史長什麼樣，也決定你刪 branch 時會不會被 Git 嚇一跳。</p>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據</span>
+  你的 handoff-end skill 裡有一段很特別的規定：「squash 或 rebase 合併會讓工作以新 commit 落地、舊 tip 變成不可達，
+  所以要比較 changes 而非 commit identity，且 <code>git branch -d</code> 會拒刪，要憑證據 fallback 到 <code>-D</code>」。
+  這段文字就是本單元的核心考點——你（或幫你寫 skill 的 AI）顯然踩過這個坑。這一課把「為什麼」補齊。
+</section>
+
+<h2>三種合併</h2>
+<p>假設 PR 是 <code>feature</code>（3 個 commit：A、B、C）合進 <code>main</code>：</p>
+<table>
+  <tr><th>方式</th><th>main 上留下什麼</th><th>特性</th></tr>
+  <tr>
+    <td><strong>Merge commit</strong><br><code>gh pr merge --merge</code></td>
+    <td>A、B、C 原樣進入，外加一個 merge commit M</td>
+    <td>歷史完整保留、可看出「這三個 commit 是一批的」；但 main 歷史會有大量分叉線。<strong>A、B、C 的 hash 不變</strong>——branch tip 仍可達。</td>
+  </tr>
+  <tr>
+    <td><strong>Squash</strong><br><code>gh pr merge --squash</code></td>
+    <td>壓成一個全新 commit S（message 取自 PR 標題）</td>
+    <td>main 歷史一 PR 一 commit，極乾淨；工作過程的零碎 commit 消失。<strong>S 是新 hash</strong>——原 branch tip 從 main 看是不可達的。</td>
+  </tr>
+  <tr>
+    <td><strong>Rebase merge</strong><br><code>gh pr merge --rebase</code></td>
+    <td>A′、B′、C′（逐一重放的新 commit）線性接上</td>
+    <td>保留逐步歷史又沒有 merge commit；但 <strong>A′≠A</strong>——同樣是新 hash，原 tip 一樣不可達。</td>
+  </tr>
+</table>
+
+<h2>何時用哪個</h2>
+<ul>
+  <li><strong>單人 + AI 協作的 repo：squash 是最佳預設</strong>。工作 branch 上的 commit 常是「WIP」「fix」「再修一下」，沒有保留價值；squash 讓 main 讀起來就是 changelog。醫生的 auto-merge 用的正是 <code>--squash --delete-branch</code>。</li>
+  <li><strong>merge commit</strong>：當 branch 上的每個 commit 都是精心整理的邏輯單元（例如一個大重構分五步，每步可獨立理解），值得整批保留時。</li>
+  <li><strong>rebase merge</strong>：想要線性歷史又想保留逐步 commit。實務上最少用——要嘛過程沒價值（squash），要嘛想標記批次（merge commit）。</li>
+  <li>repo 可以在 Settings 裡限制允許的合併方式，強迫一致性；也可開 <strong>Automatically delete head branches</strong>，合併後自動刪遠端 branch。</li>
+</ul>
+
+<h2>常見的坑</h2>
+<ul>
+  <li><strong>squash/rebase 後 <code>git branch -d</code> 拒刪</strong>：<code>-d</code> 的安全檢查是「這個 branch 的 commit 是否可達（已被包含）」。squash 後 main 上是新 commit S，原本的 A、B、C 不在任何地方——Git 認為「工作會遺失」而拒絕。但變更內容其實已經在 main 裡了。正確處置：<strong>比較變更而非 commit</strong>（例如 <code>git diff main...feature</code> 為空、或 PR 顯示 merged），確認後用 <code>-D</code> 強刪。你的 handoff-end 寫的就是這套。</li>
+  <li><strong>用 PR 狀態當唯一證據</strong>：PR 顯示 merged 不代表本地 main 已更新，也不代表 branch 上沒有合併後又多出的 commit。刪之前 <code>git fetch --prune</code> + 再確認一次。</li>
+  <li><strong>squash 大 PR</strong>：一個 800 行的 PR squash 成一個 commit，日後 <code>git bisect</code> / <code>git blame</code> 的解析度就是這 800 行。這不是 squash 的錯，是 PR 太大的錯——變更切小，squash 才無損。</li>
+  <li><strong>混用策略讓歷史難讀</strong>：同 repo 有時 squash 有時 merge commit，歷史裡分叉與線性混雜。選一個當預設，例外要有理由。</li>
+</ul>
+
+<section class="tip">
+  <span class="tip-title">💡 給你的優化建議</span>
+  在你的 repo 開兩個設定就能省掉 handoff-end 的一部分手工：
+  Settings → General → Pull Requests → 只允許 squash + 勾 <strong>Automatically delete head branches</strong>。
+  遠端 branch 由 GitHub 自動清，本地那份仍要照 skill 的證據流程刪（<code>git fetch --prune</code> 後 <code>-D</code>）。
+</section>
+
+<section class="takeaways">
+<h2>✅ Takeaways</h2>
+<ul>
+  <li>merge commit 保留原 commit（hash 不變）；squash 與 rebase merge 都產生<strong>新 commit</strong>，原 branch tip 變不可達。</li>
+  <li>單人 + AI 流程的預設選 squash：main 一 PR 一 commit，PR 標題即歷史。</li>
+  <li>squash 後 <code>branch -d</code> 拒刪是預期行為——比較變更（<code>git diff main...branch</code>）確認後用 <code>-D</code>。</li>
+  <li>刪 branch 前先 <code>git fetch --prune</code>，別只看 PR 狀態。</li>
+  <li>repo 設定可限制合併方式並自動刪 head branch。</li>
+</ul>
+</section>
+
+<h2>測驗</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="03-pull-request.html">← 03 pull-request</a>
+  <a href="05-rebase.html">05 rebase →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "04-merge-strategy",
+  "questions": [
+    {
+      "q": "PR 用 squash 合併後，你在本地執行 git branch -d feature 被拒絕：「not fully merged」。實際上發生了什麼？",
+      "type": "single",
+      "options": [
+        {"t": "squash 在 main 產生了新 commit，原 branch 的 commit 不可達，-d 的安全檢查因此誤判工作會遺失", "correct": true, "why": "正解。-d 檢查 commit 可達性，不比較變更內容；squash 後內容在 main 但 commit 不在。"},
+        {"t": "合併真的失敗了，變更沒有進 main", "correct": false, "why": "PR 顯示 merged 且 main 上有 squash commit，變更確實在——被拒是 Git 的保守檢查，不是合併失敗。"},
+        {"t": "本地 main 沒更新導致的暫時現象，git pull 後 -d 就會成功", "correct": false, "why": "pull 之後 -d 仍會拒絕：main 上是新 hash，原 commit 依然不可達。"},
+        {"t": "feature branch 有未 push 的 commit", "correct": false, "why": "有可能造成同樣訊息，但題目情境是 squash 合併後的典型行為，原因在 hash 不同。"}
+      ]
+    },
+    {
+      "q": "squash 合併後要刪本地 branch，哪些是「憑證據強刪（-D）」之前該做的確認？",
+      "type": "multi",
+      "options": [
+        {"t": "git fetch --prune，確保本地知道遠端最新狀態", "correct": true, "why": "正解。避免用過期資訊做判斷。"},
+        {"t": "比較變更是否已在 main（如 git diff main...feature 為空）", "correct": true, "why": "正解。squash 後 commit identity 沒有意義，只能比內容。"},
+        {"t": "確認合併後 branch 上沒有又多出新 commit", "correct": true, "why": "正解。另一台機器可能在合併後又 push 過；-D 會把那些真的未合併的工作刪掉。"},
+        {"t": "只要 PR 頁面顯示 merged 就可以直接 -D", "correct": false, "why": "PR 狀態是快照：它不知道合併之後 branch 又發生了什麼。"}
+      ]
+    },
+    {
+      "q": "什麼情況下 merge commit 比 squash 更合適？",
+      "type": "single",
+      "options": [
+        {"t": "branch 上每個 commit 都是精心整理、可獨立理解的邏輯步驟，值得整批保留", "correct": true, "why": "正解。merge commit 保留原 commit 並標記它們是一批——前提是那些 commit 本身有品質。"},
+        {"t": "branch 上都是 WIP、fix typo 之類的零碎 commit", "correct": false, "why": "這正是 squash 的適用情境：過程沒有保留價值。"},
+        {"t": "想讓 main 歷史完全線性", "correct": false, "why": "merge commit 會產生分叉與合流，正是非線性的來源；要線性得用 squash 或 rebase merge。"},
+        {"t": "PR 特別大的時候", "correct": false, "why": "PR 大小不是選擇依據；大 PR 該做的是切小，不是換合併方式。"}
+      ]
+    },
+    {
+      "q": "關於三種合併方式對 commit hash 的影響，哪些正確？",
+      "type": "multi",
+      "options": [
+        {"t": "merge commit：branch 上的 commit 以原 hash 進入 main 的歷史", "correct": true, "why": "正解。merge 不改寫 commit，只新增一個合流點 M。"},
+        {"t": "squash：main 得到一個全新 commit，message 預設取自 PR 標題", "correct": true, "why": "正解。所以 squash 流程下 PR 標題就是 main 的歷史。"},
+        {"t": "rebase merge：commit 逐一重放，內容相同但 hash 全部改變", "correct": true, "why": "正解。重放產生新 parent 鏈，hash 必然不同——這也是原 tip 不可達的原因。"},
+        {"t": "三種方式都會保留原 commit hash，差別只在歷史圖形", "correct": false, "why": "只有 merge commit 保留原 hash；另外兩種都產生新 commit。"}
+      ]
+    },
+    {
+      "q": "單人 + AI 協作、走 issue → PR 流程的 repo，最實用的 repo 層設定組合是？",
+      "type": "single",
+      "options": [
+        {"t": "只允許 squash 合併 + 自動刪除 head branch", "correct": true, "why": "正解。歷史一 PR 一 commit、遠端殭屍 branch 自動清——這正是醫生 auto-merge 用 --squash --delete-branch 的設定化版本。"},
+        {"t": "三種合併方式都開放，保持彈性", "correct": false, "why": "混用讓歷史難讀；彈性應該是例外而非預設。"},
+        {"t": "只允許 merge commit，保留最完整歷史", "correct": false, "why": "AI 工作 branch 的零碎 commit 沒有保留價值，完整保留是雜訊不是資產。"},
+        {"t": "禁用 PR，直接 push main 最快", "correct": false, "why": "快，但失去審核介面、CI 關卡與可追溯性——整套 GitHub Flow 的價值都不見了。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

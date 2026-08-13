@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 release — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>第 2 章 · 單元 07</span></nav>
+</header>
+<main>
+<h1><code>release</code></h1>
+<p class="unit-tagline">Release = tag + 人話說明 + 附件下載區。醫生那句「合併後自動上版 (Beta)、自動合成 Changelog」的主角就是它。</p>
+
+<section class="stat">
+  <span class="stat-title">📊 你的數據</span>
+  <code>gh release</code> 出現 11 次，接近零。你的專案目前用「main 即最新版」的模式運作，沒有 release 也活得很好——
+  所以這一課的重點不是「你該天天發版」，而是搞懂 release 機制與 <strong>changelog 自動合成的原理</strong>：
+  它會回頭改變你寫 PR 標題的方式。
+</section>
+
+<h2>這是什麼</h2>
+<p>Release 是 GitHub 在 tag 之上加的一層發布物：</p>
+<ul>
+  <li><strong>基底是 tag</strong>：每個 release 綁定一個 tag（可以指向既有 tag，或發布時順便建 tag）。</li>
+  <li><strong>Release notes</strong>：這一版改了什麼，Markdown 自由發揮——或自動生成（下述）。</li>
+  <li><strong>Assets</strong>：可掛任意檔案（執行檔、zip、PDF……）。醫生的 vox-styled-reels 把每張教學卡片渲染成影片後，就是以「一卡一 release」的形式把 mp4 掛在 assets 上。</li>
+  <li><strong>狀態旗標</strong>：<code>--draft</code>（草稿，只有自己看得到）、<code>--prerelease</code>（標示為預發行——醫生的「Beta」）。</li>
+</ul>
+
+<h2>怎麼用</h2>
+<pre><code># 最常用的一行：建 tag + release + 自動生成 notes
+gh release create v1.2.0 --generate-notes
+
+# Beta 版（prerelease 標記，不會成為 "Latest"）
+gh release create v1.2.0-beta.1 --generate-notes --prerelease
+
+# 掛附件
+gh release create v1.2.0 dist/app.zip report.pdf --generate-notes
+
+# 草稿先看再發
+gh release create v1.2.0 --generate-notes --draft
+
+# 查看與下載
+gh release list
+gh release view v1.2.0
+gh release download v1.2.0</code></pre>
+
+<h2>自動 changelog 的原理</h2>
+<p><code>--generate-notes</code> 不是魔法：它抓<strong>上一個 release 到這次 tag 之間所有合併的 PR 標題</strong>，
+列成清單、附上 PR 連結與作者。所以——</p>
+<ul>
+  <li>PR 標題寫得好（你的 Conventional Commits 習慣：<code>feat: ...</code>、<code>fix: ...</code>），changelog 就自動可讀。</li>
+  <li>在 repo 放 <code>.github/release.yml</code>，可以依 label 把 PR 分類成段落（Features / Bug fixes / …），或排除特定 label（如 <code>dependencies</code>）。</li>
+  <li>直接 push 進 main、沒走 PR 的 commit <strong>不會出現</strong>在自動 notes 裡——又一個「一律走 PR」的理由。</li>
+</ul>
+<p>這就是醫生流程「Merge 後自動合成 Changelog」的機制核心；配上第 3 章的 Actions（merge 觸發 workflow 執行
+<code>gh release create</code>），就是全自動上版。</p>
+
+<h2>常見的坑</h2>
+<ul>
+  <li><strong>notes 品質 = PR 標題品質</strong>：changelog 難看不是工具問題，是「fix stuff」式標題的問題。垃圾進垃圾出。</li>
+  <li><strong>prerelease 不擋人</strong>：<code>--prerelease</code> 只是標籤（不會列為 Latest），任何人仍能下載。它是溝通工具，不是存取控制。</li>
+  <li><strong>release 一發即公告</strong>：發布會通知 repo 的 watcher、出現在 feed。沒把握就先 <code>--draft</code>，看過再轉正式。</li>
+  <li><strong>刪 release 不會刪 tag</strong>：兩層是分開的。刪錯了要兩邊都清（<code>gh release delete</code> + <code>git push origin --delete &lt;tag&gt;</code>）。</li>
+  <li><strong>大檔案塞 repo 而不是 assets</strong>：建置產物（zip、影片、執行檔）commit 進 repo 會永久肥大歷史；掛在 release assets 上 repo 保持乾淨——醫生的影片放 assets 而不是 repo，就是這個原因。</li>
+</ul>
+
+<section class="tip">
+  <span class="tip-title">💡 給你的優化建議</span>
+  最快能受益的場景：<code>dotfiles-claude</code>。skills 改壞時你需要「回到上次好用的狀態」——
+  每次大改後 <code>gh release create v2026.08.13 --generate-notes</code>，一行指令就有帶人話說明的還原點，
+  比翻 commit log 找「哪一版還是好的」快得多。日期版號即可，不必套 SemVer。
+</section>
+
+<section class="takeaways">
+<h2>✅ Takeaways</h2>
+<ul>
+  <li>Release = tag + notes + assets；tag 是身分，release 是發布物。</li>
+  <li><code>gh release create vX --generate-notes</code> 一行完成 tag + release + changelog。</li>
+  <li>自動 notes 來自兩個 release 之間合併的 PR 標題——PR 標題就是未來的 changelog。</li>
+  <li><code>--prerelease</code> 是標籤不是門禁；<code>--draft</code> 才是「先不公開」。</li>
+  <li>建置產物掛 assets，不要 commit 進 repo。</li>
+</ul>
+</section>
+
+<h2>測驗</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="06-tag.html">← 06 tag</a>
+  <a href="08-auto-merge.html">08 auto-merge →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "07-release",
+  "questions": [
+    {
+      "q": "gh release create v1.2.0 --generate-notes 產生的 changelog 內容從哪裡來？",
+      "type": "single",
+      "options": [
+        {"t": "上一個 release 到這次 tag 之間，所有合併進 default branch 的 PR 標題", "correct": true, "why": "正解。所以 PR 標題品質直接決定 changelog 品質，直接 push 的 commit 不會出現。"},
+        {"t": "AI 閱讀 diff 自動摘要", "correct": false, "why": "--generate-notes 是規則式的（PR 標題清單），不是 AI 摘要。"},
+        {"t": "區間內所有 commit message", "correct": false, "why": "單位是 PR 不是 commit——squash 流程下兩者剛好一致，但機制讀的是 PR。"},
+        {"t": "repo 裡的 CHANGELOG.md", "correct": false, "why": "方向相反：generate-notes 是產生內容，不是讀取既有檔案。"}
+      ]
+    },
+    {
+      "q": "關於 --prerelease（如 v2.0.0-beta.1），下列敘述哪些正確？",
+      "type": "multi",
+      "options": [
+        {"t": "它不會成為 repo 的 Latest release", "correct": true, "why": "正解。Latest 只從正式 release 中選，這是 beta 不干擾正式使用者的機制。"},
+        {"t": "任何看得到 repo 的人仍然可以下載它", "correct": true, "why": "正解。prerelease 是溝通標籤，不是存取控制。"},
+        {"t": "它會限制只有 collaborator 能下載", "correct": false, "why": "沒有這種功能；要限制存取只能靠 repo 本身的可見性。"},
+        {"t": "醫生的「自動上版 (Beta)」對應的就是這類 prerelease 流程", "correct": true, "why": "正解。merge 觸發自動化發 beta 版，穩定後再轉正式版。"}
+      ]
+    },
+    {
+      "q": "你要發布一個包含 200MB 影片產物的版本。正確的做法是？",
+      "type": "single",
+      "options": [
+        {"t": "影片掛在 release assets，repo 只放產生它的原始碼", "correct": true, "why": "正解。commit 大檔會永久肥大 git 歷史（每個 clone 都得拖著它）；assets 掛在發布層，repo 保持乾淨。"},
+        {"t": "影片 commit 進 repo，和程式碼放一起比較好管理", "correct": false, "why": "200MB 進歷史就出不去了（改寫歷史代價極高），而且 GitHub 對單檔 >100MB 直接拒收。"},
+        {"t": "開一個專門的 branch 放影片", "correct": false, "why": "branch 共享同一個物件庫，歷史一樣肥大。"},
+        {"t": "影片放 issue 附件", "correct": false, "why": "issue 附件沒有版本綁定，也不是為發布物設計的。"}
+      ]
+    },
+    {
+      "q": "發現剛發的 release 綁錯了 commit，你執行 gh release delete v1.2.0。接下來還需要注意什麼？",
+      "type": "single",
+      "options": [
+        {"t": "tag v1.2.0 還在——release 與 tag 是兩層，要刪得另外刪 tag", "correct": true, "why": "正解。gh release delete 預設不動 tag；tag 留著的話，重發同版號會綁回同一個錯的 commit。"},
+        {"t": "沒有了，release 刪掉 tag 就一起消失", "correct": false, "why": "兩層獨立；這正是這題要考的誤解。"},
+        {"t": "要通知 GitHub 客服清除快取", "correct": false, "why": "沒有這種流程。"},
+        {"t": "repo 會被鎖定 24 小時不能再發版", "correct": false, "why": "沒有這種限制。"}
+      ]
+    },
+    {
+      "q": "「想讓 changelog 自動合成的品質變好」，哪些做法有直接幫助？",
+      "type": "multi",
+      "options": [
+        {"t": "所有變更走 PR，並用 Conventional Commits 風格寫 PR 標題", "correct": true, "why": "正解。notes 的素材就是 PR 標題；feat:/fix: 前綴讓清單一眼可讀。"},
+        {"t": "用 .github/release.yml 依 label 把 PR 分類成段落", "correct": true, "why": "正解。Features / Bug fixes 分段就是這個檔案在控制。"},
+        {"t": "給雜務類 PR（如依賴更新）掛 label 並在 release.yml 排除", "correct": true, "why": "正解。把雜訊擋在 changelog 外，讀者只看到有意義的變更。"},
+        {"t": "改成直接 push main，減少 PR 數量讓清單短一點", "correct": false, "why": "直接 push 的變更會從自動 notes 裡消失——changelog 短了，但也不完整了。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>
