@@ -21,6 +21,7 @@
 - **線上（主要使用方式）**：https://huansbox.github.io/github-workflow-course/ ——手機、平板皆可；測驗進度存各裝置瀏覽器的 localStorage。
 - **本地**：直接用瀏覽器開 `index.html` 也行（file:// 可用）。
 - 部署鏈：push main → `deploy.yml` 自動部署（repo 於 2026-08-13 由 private 轉 public 以啟用 Pages；內容經隱私審查後決定公開）。
+- **跨裝置進度（issue-ops）**：首頁「☁ 儲存進度到 GitHub」→ 開啟預填進度碼的 issue（label: `progress`）→ 按 Submit 即完成。`save-progress.yml` 會驗證發起人、把進度寫進 `progress.json`、關閉 issue 並重新部署；其他裝置打開網站約 1–2 分鐘後會出現「還原雲端進度」提示（逐單元取高分合併，不會倒退）。前提：該裝置的瀏覽器已登入 GitHub。
 
 ## 回饋
 

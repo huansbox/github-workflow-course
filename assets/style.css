@@ -167,6 +167,25 @@ th { background: var(--code-bg); }
   font-size: .95rem;
 }
 
+/* 進度同步列 */
+.sync { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; margin: .8rem 0 1.2rem; }
+.btn {
+  font: inherit;
+  font-size: .92rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  padding: .45rem 1rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn:hover { text-decoration: none; opacity: .92; }
+.btn.secondary { background: var(--ok); }
+.sync-note { font-size: .82rem; color: var(--muted); }
+
 /* 使用統計長條 */
 .freq { margin: .8rem 0; }
 .freq-row { display: flex; align-items: center; gap: .6rem; margin: .25rem 0; font-size: .85rem; }

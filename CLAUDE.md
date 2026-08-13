@@ -4,7 +4,7 @@
 
 ## 硬性慣例
 
-- 零依賴：不引入框架、build 步驟或外部 CDN；所有頁面必須在 file:// 下正常運作（禁用 fetch/ES modules，測驗資料一律內嵌在頁內 `#quiz-data` JSON）。
+- 零依賴：不引入框架、build 步驟或外部 CDN；所有頁面必須在 file:// 下正常運作（禁用 ES modules，測驗資料一律內嵌在頁內 `#quiz-data` JSON）。fetch 只允許漸進增強用途（如 progress.json 同步），且必須在 file:// 或失敗時靜默退場、不影響核心功能。
 - 一個單元 = 一個單字 = `units/NN-<word>.html` 一檔；內容順序固定：概念 → 何時用 → 怎麼用 → 常見的坑 →（可選）給使用者的優化建議 → Takeaways → 測驗。
 - 測驗 JSON schema：`{unit, questions:[{q, type: "single"|"multi", options:[{t, correct, why}]}]}`；每題每個選項都要有 `why` 解析；題目考「何時用/怎麼用/會踩什麼坑」，不出名詞背誦題。
 - 新增單元 checklist：建 `units/` 頁 → `index.html` 加列表項（`data-unit` 須等於 quiz JSON 的 `unit` 值）→ 前後單元的 footer 導覽連結補上。
@@ -18,4 +18,5 @@
 ## 部署
 
 - repo 已於 2026-08-13 轉 public 並啟用 Pages（https://huansbox.github.io/github-workflow-course/ ）；push main 即自動部署（`deploy.yml`，兼第 9 單元教材）。內容經隱私審查後決定公開；新增內容時維持同一標準（不寫入憑證、個資，個人 repo 名與工作流描述可接受）。
-- 回饋與後續開發以本 repo 的 GitHub issues 為 tracker。
+- 進度同步（issue-ops）：`assets/progress-sync.js`（儲存＝預填 issue、還原＝讀 `progress.json` 逐單元取高分合併）＋ `.github/workflows/save-progress.yml`（驗作者 → 淨化重建 JSON → commit → 關 issue → dispatch deploy）。label `progress` 保留給此機制；`progress.json` 由 workflow 寫入，不手動編輯。
+- 回饋與後續開發以本 repo 的 GitHub issues 為 tracker（`progress` label 的 issue 除外，那是同步機制的傳輸載體）。
