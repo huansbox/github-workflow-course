@@ -7,6 +7,7 @@
 - **第 1 章 GitHub Flow**：github-flow / issue / pull-request / merge-strategy
 - **第 2 章 低頻但高價值**（依歷史 session 的使用統計選定）：rebase / tag / release / auto-merge
 - **第 3 章 GitHub Actions**（主要知識缺口）：workflow / trigger / permissions-secrets / ci-cd
+- **綜合演練（1–3 章驗收）**：capstone——五個實戰情境 14 題（排序、配對、單複選），80% 通過後銜接規劃中的第 4 章
 
 課程個人化素材：
 

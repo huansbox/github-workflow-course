@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>13 capstone — GitHub Workflow 課程</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <nav><a href="../index.html">← 課程首頁</a><span>綜合演練 · 單元 13</span></nav>
+</header>
+<main>
+<h1><code>capstone</code></h1>
+<p class="unit-tagline">1–3 章驗收：五個實戰情境、14 題。不考名詞，只考判斷——該用誰？順序為？哪裡會炸？</p>
+
+<section class="stat">
+  <span class="stat-title">🎯 規則</span>
+  <ul style="margin:.3rem 0; padding-left:1.3rem">
+    <li>題型混合：單選、複選、<strong>排序</strong>（依正確順序逐一點選）、<strong>配對</strong>（每列下拉選單）。全程點選，不用打字。</li>
+    <li>情境刻意跨單元組合，選項裡埋了「聽起來對但推理錯」的陷阱——比單元測驗難是故意的。</li>
+    <li>80% 通過（12/14）。答錯就讀解析，每個解析都標了對應的觀念出處。</li>
+    <li>通過後：第 4 章籌備中，會依你的作答弱點與回饋決定內容。</li>
+  </ul>
+</section>
+
+<h2>開始</h2>
+<div id="quiz"></div>
+</main>
+<footer class="unit-nav"><div class="inner">
+  <a href="12-ci-cd.html">← 12 ci-cd</a>
+  <a href="../index.html">回目錄 →</a>
+</div></footer>
+<script type="application/json" id="quiz-data">
+{
+  "unit": "13-capstone",
+  "questions": [
+    {
+      "scenario": "【情境一｜週五下午的 hotfix】你是單人開發者。工作 branch 27-report-v2 上還有一堆未 commit 的半成品；此時線上網站（GitHub Pages，push main 自動部署）壞了——首頁完全打不開，你要在最短時間內修復上線。",
+      "q": "排出最穩的 hotfix 流程",
+      "type": "order",
+      "options": [
+        {"t": "git stash push -u（或先 commit 到 27-report-v2）安置未完成的變更", "why": "第一步永遠是安置半成品：未 commit 的變更會跟著你切 branch（或直接擋住切換）；-u 連未追蹤的新檔案一起收。"},
+        {"t": "git switch main 並 git pull 取得最新的 main", "why": "hotfix 必須建立在「線上正在跑的版本」之上——那就是最新的 main（第 1 課：main 永遠可部署）。"},
+        {"t": "git switch -c hotfix-homepage 切出修復 branch", "why": "從 main 切新 branch，修復才能獨立於半成品、單獨合併（第 1、3 課）。"},
+        {"t": "修復、commit、push，開 PR 並在描述寫 Closes #N", "why": "PR 是審核與 CI 的載體；Closes #N 讓合併時自動關掉回報的 issue（第 2 課）。"},
+        {"t": "等 CI 轉綠後 squash merge 並刪除 branch", "why": "CI 綠是「main 仍可部署」的機器保證；squash 維持一 PR 一 commit（第 4、12 課）。"},
+        {"t": "確認自動部署完成、網站恢復", "why": "merge 產生的 push 觸發 deploy workflow；最後一步永遠是驗證結果而不是假設成功（第 12 課）。"}
+      ]
+    },
+    {
+      "q": "（承上）為什麼不乾脆在 27-report-v2 上順手把首頁修好一起推？",
+      "type": "single",
+      "options": [
+        {"t": "PR 是 branch 對 branch 的關係——在那條 branch 修，hotfix 會和半成品混進同一個 PR，無法單獨合併部署", "correct": true, "why": "正解。第 3 課：開著的 PR 吸收該 branch 的所有 push；急救變更被半成品綁架，就只能等半成品完工或手動拆解。"},
+        {"t": "因為 rebase 金律禁止在共享 branch 上工作", "correct": false, "why": "rebase 金律管的是「別改寫別人已拿到的歷史」，與在哪條 branch 修 bug 無關。"},
+        {"t": "因為 CI 不會在 feature branch 的 PR 上執行", "correct": false, "why": "CI 掛 pull_request 事件，任何 branch 開 PR 都會跑。"},
+        {"t": "因為 GitHub 規定 hotfix 必須用名為 hotfix/ 開頭的 branch", "correct": false, "why": "GitHub 對 branch 命名沒有任何規定，命名慣例是人為約定。"}
+      ]
+    },
+    {
+      "q": "（承上）你親手按下 squash merge。部署會自動發生嗎？",
+      "type": "single",
+      "options": [
+        {"t": "會——人（或 gh CLI）合併產生的 push 是正常事件，會觸發掛在 push: main 上的 deploy workflow", "correct": true, "why": "正解。第 10 課的抑制機制只針對「workflow 內用 GITHUB_TOKEN 做的 push/merge」；人的操作是正常事件。分清這條邊界才算真懂。"},
+        {"t": "不會——所有 merge 產生的 push 都被 GitHub 抑制，要手動 dispatch", "correct": false, "why": "抑制只發生在 GITHUB_TOKEN 產生的事件（防 workflow 無限迴圈）；把它記成「所有 merge」就會白做一堆手動接力。"},
+        {"t": "不會——squash 產生的是新 commit，不算 push 事件", "correct": false, "why": "squash 合併對 main 而言就是一次 push，事件照發。"},
+        {"t": "會，但要等下一個排程週期", "correct": false, "why": "push 觸發是即時的，schedule 是另一種獨立的觸發方式。"}
+      ]
+    },
+    {
+      "scenario": "【情境二｜無人值守的每日出刊】你仿醫生的 CCChange 建每日自動出刊：排程讓 AI 每天開一個內容 PR，CI 綠後由 workflow 自動 squash merge，merge 後自動部署。上線前你逐項檢查防護設計。",
+      "q": "把每道防護配對到它防的事故",
+      "type": "match",
+      "pairs": [
+        {"left": "拒絕來自 fork 的 PR", "right": "陌生人的程式碼進入有寫入權的自動流程", "why": "fork PR 等於外部程式碼；自動合併它形同把 repo 交出去（第 8、11 課）。"},
+        {"left": "要求 PR 必須掛特定 label", "right": "未經授權的 PR 被自動合併", "why": "label 是人為的「准許自動化處理」開關，沒掛的一律留給人審（第 8 課）。"},
+        {"left": "限制改動只能落在內容目錄", "right": "PR 改掉檢查它自己的 workflow 規則", "why": "能動 CI/workflow 的 PR 若被自動合併，整套防護可被繞過（第 8 課）。"},
+        {"left": "合併前重新讀取 check 狀態", "right": "依過期快照放行已轉紅的 PR", "why": "事件 payload 是快照；事件與合併之間別的檢查可能已轉紅（第 8 課）。"}
+      ],
+      "decoys": ["YAML 縮排寫錯導致 workflow 失效", "Actions 免費額度被吃光"]
+    },
+    {
+      "q": "（承上）試營運第一天：PR 被自動合併成功，但網站停在舊版。最可能的原因與解法是？",
+      "type": "single",
+      "options": [
+        {"t": "workflow 用 GITHUB_TOKEN 合併產生的 push 被抑制、不觸發 deploy——在 auto-merge 最後用 gh workflow run 顯式接力", "correct": true, "why": "正解。第 10 課：GITHUB_TOKEN 的事件被抑制防迴圈，workflow_dispatch 是文件明載的例外；接力需要 deploy 有 workflow_dispatch 觸發、本 workflow 有 actions: write。"},
+        {"t": "GitHub Pages 有 24 小時快取，明天就好了", "correct": false, "why": "Pages 部署完成即生效，沒有一天等級的快取。"},
+        {"t": "squash merge 不會產生部署所需的 artifact", "correct": false, "why": "artifact 是 deploy workflow 自己建置的，與合併方式無關。"},
+        {"t": "自動合併的 PR 必須先發 release 才會部署", "correct": false, "why": "部署掛在 push: main 上，與 release 是兩條獨立的線。"}
+      ]
+    },
+    {
+      "q": "（承上）出刊排程要在台北時間每天 07:00 執行，cron 該寫？",
+      "type": "single",
+      "options": [
+        {"t": "0 23 * * *", "correct": true, "why": "正解。cron 用 UTC；台北（UTC+8）07:00 = 前一天 23:00 UTC（第 10 課）。另外記得 schedule 不保證準點。"},
+        {"t": "0 7 * * *", "correct": false, "why": "這是 UTC 07:00 = 台北 15:00——忘記換時區是 schedule 的第一坑。"},
+        {"t": "0 15 * * *", "correct": false, "why": "UTC 15:00 = 台北 23:00，方向減反了。"},
+        {"t": "0 23 * * * Asia/Taipei", "correct": false, "why": "GitHub 的 schedule 沒有時區欄位，只認 UTC；這行整個是非法格式。"}
+      ]
+    },
+    {
+      "q": "（承上）這條無人值守流水線上線前，哪些準備是必要的？",
+      "type": "multi",
+      "options": [
+        {"t": "每個 workflow 都設 timeout-minutes", "correct": true, "why": "正解。無人值守＝卡死也沒人發現；不設保險絲，一個 hang 住的 job 能跑滿 6 小時吃額度（第 9 課）。"},
+        {"t": "每個 workflow 明寫最小 permissions", "correct": true, "why": "正解。自動流程的 token 權限越大，被利用時的傷害越大（第 11 課）。"},
+        {"t": "作者、fork 與否、改動路徑一律用 GitHub API 查證，不採信 PR 自己提供的內容", "correct": true, "why": "正解。無人值守系統的判斷依據必須是平台事實，不能是被審查對象的自我聲明（第 8 課）。"},
+        {"t": "把個人 PAT 放進 workflow，讓自動化不受 GITHUB_TOKEN 的限制", "correct": false, "why": "PAT 繞過抑制的同時也繞過了迴圈保護，且長效寬範圍憑證洩漏傷害大——能用 dispatch 接力就不用 PAT（第 10、11 課）。"}
+      ]
+    },
+    {
+      "scenario": "【情境三｜第一次正式發版】課程網站要發第一個正式版。你打了 tag v1.0.0 準備發 release，然後遇到一連串狀況。",
+      "q": "把每個狀況配對到正確處置",
+      "type": "match",
+      "pairs": [
+        {"left": "發現 v1.0.0 打錯 commit（已推上遠端）", "right": "保留原 tag，在正確 commit 上發 v1.0.1", "why": "已發布的 tag 不移動——別人可能已拿到，且 Git 不會自動更新對方手上的 tag（第 6 課）。"},
+        {"left": "--generate-notes 產出一片 update、fix stuff", "right": "改善 PR 標題品質", "why": "自動 notes 的素材就是兩個 release 之間的 PR 標題——垃圾進垃圾出（第 7 課）。"},
+        {"left": "想附上 200MB 的教學影片", "right": "上傳到 release assets", "why": "大檔 commit 進 repo 會永久肥大歷史（且單檔 >100MB 直接被拒收）；assets 掛在發布層（第 7 課）。"},
+        {"left": "想先自己確認內容再公開", "right": "用 --draft 建草稿", "why": "draft 只有自己看得到；發布即通知 watcher，覆水難收（第 7 課）。"},
+        {"left": "想發 Beta 測試版且不搶走 Latest 標記", "right": "用 --prerelease 標記", "why": "prerelease 不會成為 Latest，但注意它只是溝通標籤、不是存取控制（第 7 課）。"}
+      ],
+      "decoys": ["把影片 commit 進 repo 方便管理", "刪掉遠端 tag 重打同名 tag"]
+    },
+    {
+      "q": "（承上）目前版本 v1.4.2。把每個變更配對到下一版的版號",
+      "type": "match",
+      "pairs": [
+        {"left": "修了一個 bug，對外行為契約不變", "right": "v1.4.3", "why": "PATCH +1（第 6 課）。"},
+        {"left": "新增指令列參數，舊用法全部照舊", "right": "v1.5.0", "why": "向下相容的新功能：MINOR +1、PATCH 歸零。"},
+        {"left": "設定檔格式改了，舊設定檔要手動轉換", "right": "v2.0.0", "why": "使用者必須動手才能升級＝不相容＝MAJOR +1。"},
+        {"left": "純內部重構，外部行為完全不變", "right": "不需要單獨發版", "why": "外部契約沒變就不構成發版事件；隨下一次 PATCH/MINOR 一起出即可。"}
+      ]
+    },
+    {
+      "scenario": "【情境四｜陌生人的 PR】課程 repo 公開後，陌生帳號開了 PR A：「幫你優化 CI」，改動 .github/workflows/deploy.yml；另一位熱心人開了 PR B，修正內容裡的幾個錯字。",
+      "q": "關於 PR A（改 workflow 檔的那個），哪些敘述正確？",
+      "type": "multi",
+      "options": [
+        {"t": "它的 pull_request CI run 拿不到 secrets，GITHUB_TOKEN 也是唯讀", "correct": true, "why": "正解。fork PR 的預設防護：陌生程式碼在無鑰匙的沙箱裡跑（第 11 課）。"},
+        {"t": "就算 CI 全綠也必須人工細審——它改的是自動化規則本身", "correct": true, "why": "正解。CI 只驗證「現有檢查通過」；這個 PR 動的正是檢查規則，機器綠燈保證不了它的意圖（第 8 課的路徑防護就是防這類變更被自動放行）。"},
+        {"t": "想「用完整權限測測看」而改用 pull_request_target 跑它，是教科書級漏洞", "correct": true, "why": "正解。pull_request_target 有 secrets 與寫入權，在其中執行 PR 的程式碼就是 pwn request（第 11 課）。"},
+        {"t": "CI 綠了就可以直接合併，機器已經驗證過了", "correct": false, "why": "對一般內容變更都不成立（CI 信心上限＝測試信心上限），對 workflow 變更更是危險。"}
+      ]
+    },
+    {
+      "q": "（承上）PR B（錯字修正）看過沒問題，用哪種方式合併最合適？",
+      "type": "single",
+      "options": [
+        {"t": "squash merge——單人維護的 repo 保持一 PR 一 commit，PR 標題成為 main 歷史與 changelog 素材", "correct": true, "why": "正解。第 4 課：這正是 repo 設定「只允許 squash」的理由；順手把 PR 標題改成有意義的一行更好。"},
+        {"t": "merge commit——保留貢獻者的所有 commit 以示尊重", "correct": false, "why": "尊重貢獻靠的是掛名（squash commit 會保留作者署名），不是把 fix typo x3 留進歷史。"},
+        {"t": "rebase merge——最快最省事", "correct": false, "why": "速度三者相同；rebase merge 會把零碎 commit 逐一搬進 main，正是想避免的。"},
+        {"t": "請對方先自行 squash 成一個 commit 再合併", "correct": false, "why": "GitHub 的 squash 按鈕就能做到，把工序推回貢獻者只是增加摩擦。"}
+      ]
+    },
+    {
+      "scenario": "【情境五｜兩台機器的早晨】昨晚你在 mac 上往工作 branch 推了 3 個 commit；今早換 Windows 接手，同一條 branch 的本地副本停在三天前，而且還有 1 個當時忘記推的 commit。",
+      "q": "最乾淨的接手方式是？",
+      "type": "single",
+      "options": [
+        {"t": "git pull --rebase：把本地那個未推的 commit 重放到 mac 的 3 個 commit 之後", "correct": true, "why": "正解。第 5 課：兩機輪替正是 pull --rebase 的教科書場景，歷史保持一直線、不長雜訊合併 commit。"},
+        {"t": "git pull：讓 Git 自動合併兩邊", "correct": false, "why": "可行，但會產生一個「Merge branch …」雜訊 commit——題目問的是最乾淨，這是次佳解。"},
+        {"t": "git push --force 以本地為準", "correct": false, "why": "災難選項：會把 mac 昨晚的 3 個 commit 從遠端抹掉。"},
+        {"t": "刪掉本地重新 clone 最保險", "correct": false, "why": "那個未推的 commit 會跟著本地副本一起消失。"}
+      ]
+    },
+    {
+      "q": "（承上）pull --rebase 完成後要 push，需要 --force-with-lease 嗎？",
+      "type": "single",
+      "options": [
+        {"t": "不需要——被改寫的只是那個從未推出去的 commit，遠端歷史沒被動到，普通 push 就是快轉", "correct": true, "why": "正解。「rebase 後必須 force」是常見誤解；需要 force 的是「改寫了遠端已有的歷史」。這裡重放的 commit 遠端根本沒見過（第 5 課）。"},
+        {"t": "需要——rebase 之後一律要 force 系列才推得上去", "correct": false, "why": "只有改寫「遠端已存在的 commit」才需要；pull --rebase 改寫的是本地未推的部分。"},
+        {"t": "需要——因為本地 commit 的 hash 變了", "correct": false, "why": "hash 變了沒錯，但變的是遠端從未持有的 commit，對遠端而言這就是普通的新 commit。"},
+        {"t": "不需要——因為 force push 功能已被 GitHub 移除", "correct": false, "why": "force push 仍然存在（可被 branch protection 禁用），理由完全不對。"}
+      ]
+    },
+    {
+      "scenario": "【壓軸】把醫生那條「人只出現兩次」的完整流水線親手排一次——從需求出現到自動上版。",
+      "q": "排出完整流程的正確順序",
+      "type": "order",
+      "options": [
+        {"t": "開 issue 描述需求，AI 在 issue 留言貼上分析與計畫", "why": "起點永遠是 issue：待辦、規格與審核點三合一（第 2 課）。"},
+        {"t": "人審核 issue 上的計畫並批准", "why": "人的第一次出場：判斷方向。批准留在 issue 上，可追溯（第 2 課）。"},
+        {"t": "從 main 切出工作 branch，實作並 commit、push", "why": "批准後才動工；branch 從最新 main 切出（第 1 課）。"},
+        {"t": "開 PR，描述寫 Closes #N 並附驗證證據（截圖、測試輸出）", "why": "PR 是審核介面，證據固定在 PR 上；Closes #N 串起 issue（第 2、3 課）。"},
+        {"t": "CI 在 PR 上自動執行檢查", "why": "pull_request 觸發，合併前把關（第 10、12 課）。"},
+        {"t": "人 review PR 的 diff 與證據", "why": "人的第二次出場：看 diff 有沒有可疑的東西——這是最後一道人工判斷（第 3 課）。"},
+        {"t": "auto-merge 在綠燈與防護條件滿足後 squash 合併並刪除 branch", "why": "機器等綠燈、按按鈕、清 branch；防護清單守住無人值守的邊界（第 4、8 課）。"},
+        {"t": "merge 觸發部署與 release/changelog 自動化", "why": "循環的最後一步全是機器：CD 送貨、自動上版（第 7、12 課）。"}
+      ]
+    }
+  ]
+}
+</script>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

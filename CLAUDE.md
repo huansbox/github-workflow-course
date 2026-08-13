@@ -6,7 +6,7 @@
 
 - 零依賴：不引入框架、build 步驟或外部 CDN；所有頁面必須在 file:// 下正常運作（禁用 ES modules，測驗資料一律內嵌在頁內 `#quiz-data` JSON）。fetch 只允許漸進增強用途（如 progress.json 同步），且必須在 file:// 或失敗時靜默退場、不影響核心功能。
 - 一個單元 = 一個單字 = `units/NN-<word>.html` 一檔；內容順序固定：概念 → 何時用 → 怎麼用 → 常見的坑 →（可選）給使用者的優化建議 → Takeaways → 測驗。
-- 測驗 JSON schema：`{unit, questions:[{q, type: "single"|"multi", options:[{t, correct, why}]}]}`；每題每個選項都要有 `why` 解析；題目考「何時用/怎麼用/會踩什麼坑」，不出名詞背誦題。
+- 測驗 JSON schema：`{unit, questions:[...]}`，題型四種——`single`/`multi`（`options:[{t, correct, why}]`）、`order`（`options` 陣列順序即正解，`[{t, why}]`，作答方式為依序點選）、`match`（`pairs:[{left, right, why}]` + 可選 `decoys:[...]` 干擾項，每列下拉選單）。題目可帶 `scenario` 欄位渲染情境框。每題每個選項/配對都要有 `why` 解析；題目考「何時用/怎麼用/會踩什麼坑」，不出名詞背誦題；所有作答互動必須是點選（手機友善），不得要求打字。
 - 新增單元 checklist：建 `units/` 頁 → `index.html` 加列表項（`data-unit` 須等於 quiz JSON 的 `unit` 值）→ 前後單元的 footer 導覽連結補上。
 - 全站正體中文（臺灣用語），技術術語與指令保留英文。
 
