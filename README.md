@@ -2,6 +2,8 @@
 
 為 huansbox 客製的 GitHub workflow 自學課程。一個單元一個單字，每單元含概念、何時用、怎麼用、常見的坑、takeaways 與測驗（選擇題，80% 通過）。
 
+課程維護規範與 agent 共用入口見 [AGENTS.md](AGENTS.md)。
+
 ## 課程結構
 
 - **第 1 章 GitHub Flow**：github-flow / issue / pull-request / merge-strategy
@@ -12,7 +14,7 @@
 課程個人化素材：
 
 - 歷史 Claude Code session 記錄的 git/gh 指令詞頻統計（2026-08 統計，見首頁圖表）
-- 使用者現行工作流（global CLAUDE.md、handoff-start/end、grill-me、to-issues、repo-wiki skills）
+- 使用者工作流的 2026-08 教材快照（global CLAUDE.md、handoff-start/end、grill-me、to-issues、repo-wiki skills）；現行 global guidance 與 shared skills 以 canonical [dotfiles](https://github.com/huansbox/dotfiles)（`~/dotfiles/`）為準。
 - htlin222 醫師公開 repo 的真實 workflow 案例（CCChange 的 auto-merge/deploy、vox-styled-reels 的 issue-to-card/release-cards）
 
 ## 使用方式
